@@ -1,96 +1,243 @@
-import type { Metadata } from 'next';
+'use client';
+
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-
+import { useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
 import {
-  VerificationBadge,
-  LegalConfidenceMeter,
+  VerificationBlock,
+  ConfidenceMeter,
 } from '@/components/verification-badge';
-import {
-  calculateCharterIncentives,
-  formatMAD,
-} from '@/lib/utils/charter-calculator';
-import type { Property, PropertyDocument, AuditEvent } from '@/types';
+import type { Property, AuditEvent, PropertyDocument } from '@/types';
 
 // =============================================================================
-// METADATA
+// ANIMATION VARIANTS
 // =============================================================================
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  // TODO: Fetch property title
-  return {
-    title: `Property ${id.slice(0, 8)}`,
-    description: 'Detailed property audit view',
-  };
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.25, 0.1, 0.25, 1],
+    },
+  },
+};
+
+// =============================================================================
+// MOCK DATA — Replace with Supabase
+// =============================================================================
+
+const mockProperty: Property = {
+  id: '1',
+  title_number: 'TF-12847/M',
+  requisition_number: null,
+  melkia_reference: null,
+  legal_status: 'Titled',
+  legal_confidence_score: 94,
+  gps_point: { type: 'Point', coordinates: [-7.9811, 31.6295] },
+  boundary_polygon: null,
+  cadastral_zone: 'MR-2847-014',
+  charter_category: 'A',
+  charter_score: 82,
+  charter_eligible: true,
+  estimated_cashback_pct: 10,
+  acquisition_price_mad: 4200000,
+  estimated_value_mad: 5100000,
+  price_per_sqm_mad: 12750,
+  surface_sqm: 400,
+  audit_trail: [
+    {
+      timestamp: '2024-01-15T10:00:00Z',
+      event_type: 'creation',
+      user_id: null,
+      data: { source: 'Field Scout', notes: 'Initial property registration' },
+    },
+    {
+      timestamp: '2024-01-18T14:30:00Z',
+      event_type: 'document_upload',
+      user_id: null,
+      data: { source: 'Conservation Foncière', decree_number: 'BO-2024-7142' },
+    },
+    {
+      timestamp: '2024-01-20T09:15:00Z',
+      event_type: 'cadastral_match',
+      user_id: null,
+      data: { source: 'E-Cadastre', reference_url: 'https://ecadastre.ancfcc.gov.ma' },
+    },
+    {
+      timestamp: '2024-01-22T11:45:00Z',
+      event_type: 'legal_status_change',
+      user_id: null,
+      data: {
+        source: 'Manual Verification',
+        previous_value: 'In-Process',
+        new_value: 'Titled',
+      },
+    },
+  ],
+  created_at: '2024-01-15T10:00:00Z',
+  updated_at: '2024-01-22T11:45:00Z',
+  created_by: null,
+  updated_by: null,
+};
+
+const mockDocuments: PropertyDocument[] = [
+  {
+    id: 'd1',
+    property_id: '1',
+    document_type: 'Titre Foncier Certificate',
+    file_path: '/docs/tf-12847-m.pdf',
+    file_hash: 'a3f2b1c8d9e0',
+    source_reference: 'Conservation Foncière Marrakech',
+    verification_status: 'verified',
+    captured_at: '2024-01-18T14:30:00Z',
+    captured_gps: null,
+    metadata: {},
+    created_at: '2024-01-18T14:30:00Z',
+  },
+  {
+    id: 'd2',
+    property_id: '1',
+    document_type: 'E-Cadastre Screenshot',
+    file_path: '/docs/cadastre-mr-2847-014.png',
+    file_hash: 'b4g3c2d1e0f9',
+    source_reference: 'ANCFCC E-Cadastre Portal',
+    verification_status: 'verified',
+    captured_at: '2024-01-20T09:15:00Z',
+    captured_gps: { type: 'Point', coordinates: [-7.9811, 31.6295] },
+    metadata: {},
+    created_at: '2024-01-20T09:15:00Z',
+  },
+];
+
+const mockSources = [
+  {
+    index: 1,
+    label: 'Bulletin Officiel',
+    reference: 'BO n° 7142 du 18 janvier 2024',
+    url: 'https://www.sgg.gov.ma/BO/bulletin_officiel.aspx',
+  },
+  {
+    index: 2,
+    label: 'E-Cadastre',
+    reference: 'Parcelle MR-2847-014',
+    url: 'https://ecadastre.ancfcc.gov.ma',
+  },
+  {
+    index: 3,
+    label: 'Loi-cadre n° 03-22',
+    reference: 'Charte d\'Investissement 2026',
+    url: 'https://www.sgg.gov.ma/loi-cadre-03-22',
+  },
+];
+
+// =============================================================================
+// UTILITY
+// =============================================================================
+
+function formatMAD(value: number): string {
+  return new Intl.NumberFormat('fr-MA', {
+    style: 'decimal',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
-// =============================================================================
-// DATA FETCHING
-// =============================================================================
-
-async function getProperty(id: string): Promise<Property | null> {
-  // TODO: Replace with Supabase query
-  // Placeholder - return null triggers notFound()
-  return null;
-}
-
-async function getPropertyDocuments(
-  propertyId: string
-): Promise<PropertyDocument[]> {
-  // TODO: Replace with Supabase query
-  return [];
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 // =============================================================================
 // COMPONENTS
 // =============================================================================
 
-function PropertyHeader({ property }: { property: Property }) {
-  const identifier =
-    property.title_number ||
-    property.requisition_number ||
-    property.melkia_reference ||
-    'Unregistered Property';
+function MapVoid({ gpsPoint }: { gpsPoint: Property['gps_point'] }) {
+  const lat = gpsPoint?.coordinates[1].toFixed(6) || '—';
+  const lng = gpsPoint?.coordinates[0].toFixed(6) || '—';
 
   return (
-    <div className="border-b border-slate-200 bg-white">
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <Link
-              href="/dashboard"
-              className="mb-2 inline-flex text-sm text-slate-500 hover:text-slate-700"
-            >
-              ← Back to Dashboard
-            </Link>
-            <h1 className="text-2xl font-semibold text-slate-900">
-              {identifier}
-            </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <VerificationBadge
-                status={property.legal_status}
-                confidenceScore={property.legal_confidence_score}
-              />
-              {property.charter_category && (
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">
-                  Category {property.charter_category}
-                </span>
-              )}
-              {property.cadastral_zone && (
-                <span className="text-sm text-slate-500">
-                  Zone: {property.cadastral_zone}
-                </span>
-              )}
-            </div>
+    <div className="map-void map-crosshair relative">
+      {/* Crosshair Overlay */}
+      <div className="crosshair-overlay" />
+
+      {/* Placeholder Content */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-mono text-xs tracking-widest opacity-30">
+          TARGETING SYSTEM
+        </span>
+        <span className="mt-2 font-mono text-sm tabular-nums">
+          {lat}°N, {Math.abs(parseFloat(lng)).toFixed(6)}°W
+        </span>
+      </div>
+
+      {/* Coordinates Overlay */}
+      <div className="absolute bottom-4 left-4 font-mono text-xs tracking-wider opacity-50">
+        <span>LAT {lat}</span>
+        <span className="mx-3">|</span>
+        <span>LNG {lng}</span>
+      </div>
+    </div>
+  );
+}
+
+function ValuationBlock({ property }: { property: Property }) {
+  return (
+    <div className="specimen-card">
+      <div className="specimen-header">
+        <h3>Valuation</h3>
+      </div>
+      <div className="specimen-body">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="stat-block">
+            <span className="stat-label">Acquisition</span>
+            <span className="stat-value--mono">
+              {property.acquisition_price_mad
+                ? formatMAD(property.acquisition_price_mad)
+                : '—'}
+            </span>
+            <span className="stat-subtext">MAD</span>
           </div>
-          <div className="flex gap-2">
-            <button className="btn btn-secondary btn-md">Export PDF</button>
-            <button className="btn btn-primary btn-md">Edit Property</button>
+          <div className="stat-block">
+            <span className="stat-label">Est. Value</span>
+            <span className="stat-value--mono">
+              {property.estimated_value_mad
+                ? formatMAD(property.estimated_value_mad)
+                : '—'}
+            </span>
+            <span className="stat-subtext">MAD</span>
+          </div>
+          <div className="stat-block">
+            <span className="stat-label">Surface</span>
+            <span className="stat-value--mono">
+              {property.surface_sqm || '—'}
+            </span>
+            <span className="stat-subtext">m²</span>
+          </div>
+          <div className="stat-block">
+            <span className="stat-label">Price/m²</span>
+            <span className="stat-value--mono">
+              {property.price_per_sqm_mad
+                ? formatMAD(property.price_per_sqm_mad)
+                : '—'}
+            </span>
+            <span className="stat-subtext">MAD</span>
           </div>
         </div>
       </div>
@@ -98,266 +245,106 @@ function PropertyHeader({ property }: { property: Property }) {
   );
 }
 
-function LegalStatusCard({ property }: { property: Property }) {
-  return (
-    <div className="card">
-      <div className="card-header">
-        <h2 className="font-semibold text-slate-900">Legal Status</h2>
-      </div>
-      <div className="card-body space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-slate-600">Current Status</span>
-          <VerificationBadge status={property.legal_status} />
-        </div>
-
-        {property.legal_confidence_score !== null && (
-          <LegalConfidenceMeter
-            score={property.legal_confidence_score}
-            status={property.legal_status}
-          />
-        )}
-
-        <div className="space-y-2 border-t border-slate-100 pt-4">
-          {property.title_number && (
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Title Number</span>
-              <span className="mono-data">{property.title_number}</span>
-            </div>
-          )}
-          {property.requisition_number && (
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Requisition</span>
-              <span className="mono-data">{property.requisition_number}</span>
-            </div>
-          )}
-          {property.melkia_reference && (
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Melkia Ref</span>
-              <span className="mono-data">{property.melkia_reference}</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CharterAssessmentCard({ property }: { property: Property }) {
-  if (!property.charter_category || !property.acquisition_price_mad) {
+function CharterBlock({ property }: { property: Property }) {
+  if (!property.charter_category) {
     return (
-      <div className="card">
-        <div className="card-header">
-          <h2 className="font-semibold text-slate-900">2026 Charter Assessment</h2>
+      <div className="specimen-card">
+        <div className="specimen-header">
+          <h3>2026 Charter Assessment</h3>
         </div>
-        <div className="card-body text-center text-slate-500">
-          <p>Insufficient data for charter calculation</p>
-          <p className="mt-1 text-sm">
-            Add acquisition price and category to enable
+        <div className="specimen-body py-12 text-center">
+          <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+            Insufficient data for charter calculation
           </p>
         </div>
       </div>
     );
   }
 
-  const result = calculateCharterIncentives({
-    acquisition_price_mad: property.acquisition_price_mad,
-    charter_category: property.charter_category,
-    is_renovation: false,
-  });
-
   return (
-    <div className="card">
-      <div className="card-header flex items-center justify-between">
-        <h2 className="font-semibold text-slate-900">2026 Charter Assessment</h2>
-        <span
-          className={`
-            rounded-full px-2 py-0.5 text-xs font-medium
-            ${
-              property.charter_eligible
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-slate-100 text-slate-600'
-            }
-          `}
-        >
-          {property.charter_eligible ? 'Eligible' : 'Not Eligible'}
+    <div className="specimen-card">
+      <div className="specimen-header flex items-center justify-between">
+        <h3>2026 Charter Assessment</h3>
+        <span className="stamp stamp--certified text-[10px]">
+          {property.charter_eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}
         </span>
       </div>
-      <div className="card-body">
-        <div className="mb-4 grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-slate-500">
-              Base Rate
-            </p>
-            <p className="text-2xl font-semibold text-slate-900">
-              {result.base_cashback_pct}%
-            </p>
+      <div className="specimen-body">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="stat-block">
+            <span className="stat-label">Category</span>
+            <span className="stat-value font-serif">{property.charter_category}</span>
+            <span className="stat-subtext">Zone classification</span>
           </div>
-          <div>
-            <p className="text-xs uppercase tracking-wider text-slate-500">
-              Total Cashback
-            </p>
-            <p className="text-2xl font-semibold text-emerald-600">
-              {result.total_cashback_pct}%
-            </p>
+          <div className="stat-block">
+            <span className="stat-label">Cashback Rate</span>
+            <span className="stat-value--mono">
+              {property.estimated_cashback_pct || '—'}%
+            </span>
+            <span className="stat-subtext">Of eligible investment</span>
           </div>
         </div>
 
-        <div className="space-y-2 border-t border-slate-100 pt-4 text-sm">
-          <div className="flex justify-between">
-            <span className="text-slate-500">Eligible Investment</span>
-            <span className="mono-data">
-              {formatMAD(result.eligible_investment_mad)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Estimated Cashback</span>
-            <span className="mono-data font-semibold text-emerald-600">
-              {formatMAD(result.estimated_cashback_mad)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Reference</span>
-            <span className="text-xs text-slate-400">
-              {result.decree_reference}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ValuationCard({ property }: { property: Property }) {
-  return (
-    <div className="card">
-      <div className="card-header">
-        <h2 className="font-semibold text-slate-900">Valuation</h2>
-      </div>
-      <div className="card-body">
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-slate-500">Acquisition Price</span>
-            <span className="mono-data">
-              {property.acquisition_price_mad
-                ? formatMAD(property.acquisition_price_mad)
-                : '—'}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Estimated Value</span>
-            <span className="mono-data">
-              {property.estimated_value_mad
-                ? formatMAD(property.estimated_value_mad)
-                : '—'}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Surface</span>
-            <span className="mono-data">
-              {property.surface_sqm ? `${property.surface_sqm} m²` : '—'}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Price/m²</span>
-            <span className="mono-data">
-              {property.price_per_sqm_mad
-                ? `${formatMAD(property.price_per_sqm_mad)}/m²`
-                : '—'}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GeospatialCard({ property }: { property: Property }) {
-  const hasLocation = property.gps_point !== null;
-  const hasPolygon = property.boundary_polygon !== null;
-
-  return (
-    <div className="card">
-      <div className="card-header">
-        <h2 className="font-semibold text-slate-900">Geospatial Data</h2>
-      </div>
-      <div className="card-body">
-        {/* Map placeholder */}
-        <div className="mb-4 flex aspect-video items-center justify-center rounded-lg bg-slate-100">
-          {hasLocation ? (
-            <span className="text-slate-500">
-              Map view: {property.gps_point?.coordinates[1].toFixed(6)},{' '}
-              {property.gps_point?.coordinates[0].toFixed(6)}
-            </span>
-          ) : (
-            <span className="text-slate-400">No GPS data</span>
-          )}
-        </div>
-
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500">GPS Point</span>
-            <span
-              className={`status-dot ${hasLocation ? 'bg-emerald-500' : 'bg-slate-300'}`}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500">Boundary Polygon</span>
-            <span
-              className={`status-dot ${hasPolygon ? 'bg-emerald-500' : 'bg-slate-300'}`}
-            />
-          </div>
-          {property.cadastral_zone && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Cadastral Zone</span>
-              <span className="mono-data">{property.cadastral_zone}</span>
+        {property.acquisition_price_mad && property.estimated_cashback_pct && (
+          <div className="mt-6 border-t border-[#EEEEEE] pt-6">
+            <div className="flex items-end justify-between">
+              <div>
+                <span className="stat-label">Potential Cashback</span>
+              </div>
+              <div className="text-right">
+                <span className="font-serif text-3xl">
+                  {formatMAD(
+                    (property.acquisition_price_mad * property.estimated_cashback_pct) /
+                      100
+                  )}
+                </span>
+                <span className="ml-2 font-mono text-xs opacity-50">MAD</span>
+              </div>
             </div>
-          )}
-        </div>
+            <p className="mt-2 font-mono text-xs opacity-50">
+              Ref: Loi-cadre n° 03-22 — Charte d&apos;Investissement
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function AuditTrailCard({ events }: { events: AuditEvent[] }) {
+function AuditTimeline({ events }: { events: AuditEvent[] }) {
   if (events.length === 0) {
     return (
-      <div className="card">
-        <div className="card-header">
-          <h2 className="font-semibold text-slate-900">Audit Trail</h2>
+      <div className="specimen-card">
+        <div className="specimen-header">
+          <h3>Audit Trail</h3>
         </div>
-        <div className="card-body text-center text-slate-500">
-          No audit events recorded
+        <div className="specimen-body py-12 text-center">
+          <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+            No audit events recorded
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <h2 className="font-semibold text-slate-900">Audit Trail</h2>
+    <div className="specimen-card">
+      <div className="specimen-header">
+        <h3>Audit Trail</h3>
       </div>
-      <div className="card-body">
-        <div className="space-y-4">
+      <div className="specimen-body">
+        <div className="audit-timeline">
           {events.map((event, index) => (
-            <div
-              key={index}
-              className="relative border-l-2 border-slate-200 pl-4"
-            >
-              <div className="absolute -left-1.5 top-0 h-3 w-3 rounded-full bg-slate-300" />
-              <p className="text-xs text-slate-400">
-                {new Date(event.timestamp).toLocaleString()}
+            <div key={index} className="audit-event">
+              <p className="audit-timestamp">{formatDate(event.timestamp)}</p>
+              <p className="audit-type">
+                {event.event_type.replace(/_/g, ' ')}
               </p>
-              <p className="font-medium text-slate-700">{event.event_type}</p>
               {event.data.source && (
-                <p className="text-sm text-slate-500">
-                  Source: {event.data.source}
-                </p>
+                <p className="audit-detail">Source: {event.data.source}</p>
               )}
               {event.data.decree_number && (
-                <p className="mono-data text-xs text-slate-400">
-                  {event.data.decree_number}
-                </p>
+                <p className="audit-detail">Ref: {event.data.decree_number}</p>
               )}
             </div>
           ))}
@@ -367,46 +354,39 @@ function AuditTrailCard({ events }: { events: AuditEvent[] }) {
   );
 }
 
-function DocumentsCard({ documents }: { documents: PropertyDocument[] }) {
+function DocumentsBlock({ documents }: { documents: PropertyDocument[] }) {
   return (
-    <div className="card">
-      <div className="card-header flex items-center justify-between">
-        <h2 className="font-semibold text-slate-900">Documents</h2>
-        <button className="btn btn-secondary btn-sm">Upload</button>
+    <div className="specimen-card">
+      <div className="specimen-header flex items-center justify-between">
+        <h3>Documents</h3>
+        <button className="btn-editorial text-[10px]">Upload</button>
       </div>
-      <div className="card-body">
+      <div className="specimen-body">
         {documents.length === 0 ? (
-          <p className="text-center text-slate-500">No documents uploaded</p>
+          <p className="py-8 text-center font-mono text-xs uppercase tracking-widest opacity-50">
+            No documents uploaded
+          </p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-4">
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="flex items-center justify-between rounded-lg border border-slate-200 p-3"
+                className="flex items-center justify-between border-b border-[#EEEEEE] pb-4 last:border-0 last:pb-0"
               >
                 <div>
-                  <p className="font-medium text-slate-700">
-                    {doc.document_type}
+                  <p className="font-mono text-sm">{doc.document_type}</p>
+                  <p className="mt-1 font-mono text-xs opacity-50">
+                    {doc.source_reference}
                   </p>
-                  {doc.source_reference && (
-                    <p className="text-xs text-slate-500">
-                      {doc.source_reference}
-                    </p>
-                  )}
                 </div>
                 <span
-                  className={`
-                    rounded-full px-2 py-0.5 text-xs font-medium
-                    ${
-                      doc.verification_status === 'verified'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : doc.verification_status === 'rejected'
-                          ? 'bg-rose-100 text-rose-700'
-                          : 'bg-slate-100 text-slate-600'
-                    }
-                  `}
+                  className={`stamp text-[10px] ${
+                    doc.verification_status === 'verified'
+                      ? 'stamp--certified'
+                      : 'stamp--pending'
+                  }`}
                 >
-                  {doc.verification_status}
+                  {doc.verification_status.toUpperCase()}
                 </span>
               </div>
             ))}
@@ -417,46 +397,181 @@ function DocumentsCard({ documents }: { documents: PropertyDocument[] }) {
   );
 }
 
+function SourcesFootnotes({
+  sources,
+}: {
+  sources: Array<{ index: number; label: string; reference: string; url: string }>;
+}) {
+  return (
+    <div className="footnotes">
+      <h3 className="footnotes-title">Sources</h3>
+      <div className="space-y-1">
+        {sources.map((source) => (
+          <p key={source.index} className="footnote-item" data-index={`[${source.index}]`}>
+            <strong>{source.label}</strong> — {source.reference}.{' '}
+            <a
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footnote-link"
+            >
+              View source ↗
+            </a>
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // =============================================================================
 // PAGE COMPONENT
 // =============================================================================
 
-export default async function RefineryPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const [property, documents] = await Promise.all([
-    getProperty(id),
-    getPropertyDocuments(id),
-  ]);
+export default function RefineryPage() {
+  const params = useParams();
+  const id = params.id as string;
 
-  if (!property) {
-    notFound();
-  }
+  // In production, fetch from Supabase
+  const property = mockProperty;
+  const documents = mockDocuments;
+
+  const identifier =
+    property.title_number ||
+    property.requisition_number ||
+    property.melkia_reference ||
+    'UNREGISTERED';
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <PropertyHeader property={property} />
-
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Left Column */}
-          <div className="space-y-6">
-            <LegalStatusCard property={property} />
-            <CharterAssessmentCard property={property} />
-            <ValuationCard property={property} />
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            <GeospatialCard property={property} />
-            <DocumentsCard documents={documents} />
-            <AuditTrailCard events={property.audit_trail} />
+    <div className="min-h-screen bg-white safe-top safe-bottom">
+      {/* Navigation */}
+      <nav className="nav-editorial">
+        <div className="nav-inner">
+          <Link href="/" className="nav-logo">
+            The Damn Penguin
+          </Link>
+          <div className="nav-links">
+            <Link href="/dashboard" className="nav-link">
+              Portfolio
+            </Link>
+            <Link href="/scout" className="nav-link">
+              Scout
+            </Link>
           </div>
         </div>
-      </div>
+      </nav>
+
+      {/* Header */}
+      <motion.header
+        className="border-b border-[#EEEEEE]"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="container-editorial py-8">
+          <motion.div variants={itemVariants}>
+            <Link
+              href="/dashboard"
+              className="font-mono text-xs uppercase tracking-widest opacity-50 hover:opacity-100"
+            >
+              ← Back to Portfolio
+            </Link>
+          </motion.div>
+          <motion.div
+            variants={itemVariants}
+            className="mt-6 flex items-end justify-between"
+          >
+            <div>
+              <h1 className="font-serif">{identifier}</h1>
+              <p className="mt-2 font-mono text-sm uppercase tracking-wider opacity-50">
+                Specimen {id} — {property.cadastral_zone || 'No Zone'}
+              </p>
+            </div>
+            <div className="flex gap-4">
+              <button className="btn-editorial">Export PDF</button>
+              <button className="btn-editorial btn-editorial--filled">
+                Edit
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </motion.header>
+
+      {/* Map Section — Floating Void */}
+      <motion.section
+        className="section-void"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+      >
+        <div className="container-editorial">
+          <motion.div variants={itemVariants}>
+            <MapVoid gpsPoint={property.gps_point} />
+          </motion.div>
+        </div>
+      </motion.section>
+
+      {/* Main Content Grid */}
+      <motion.section
+        className="section-void"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-100px' }}
+      >
+        <div className="container-editorial">
+          <div className="grid gap-8 lg:grid-cols-2">
+            {/* Left Column */}
+            <div className="space-y-8">
+              <motion.div variants={itemVariants}>
+                <VerificationBlock
+                  status={property.legal_status}
+                  confidenceScore={property.legal_confidence_score}
+                  titleNumber={property.title_number}
+                  requisitionNumber={property.requisition_number}
+                  melkiaReference={property.melkia_reference}
+                />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <CharterBlock property={property} />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <ValuationBlock property={property} />
+              </motion.div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-8">
+              <motion.div variants={itemVariants}>
+                <DocumentsBlock documents={documents} />
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <AuditTimeline events={property.audit_trail} />
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Sources Section */}
+          <motion.div variants={itemVariants}>
+            <SourcesFootnotes sources={mockSources} />
+          </motion.div>
+        </div>
+      </motion.section>
+
+      {/* Footer */}
+      <footer className="section-void border-t border-[#EEEEEE]">
+        <div className="container-editorial">
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+              © 2026 The Damn Penguin
+            </p>
+            <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+              Last Updated: {formatDate(property.updated_at)}
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

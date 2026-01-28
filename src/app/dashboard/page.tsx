@@ -1,248 +1,307 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Suspense } from 'react';
+'use client';
 
-import { VerificationBadge } from '@/components/verification-badge';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { LegalStamp, LegalStampCompact } from '@/components/verification-badge';
 import type {
   LegalStatus,
   CharterCategory,
   PortfolioSummary,
   Property,
-  DashboardFilters,
 } from '@/types';
 
 // =============================================================================
-// METADATA
+// ANIMATION VARIANTS — Staggered Entrance (10-20px slide, no bounce)
 // =============================================================================
 
-export const metadata: Metadata = {
-  title: 'Dashboard',
-  description: 'Portfolio overview with legal status filtering',
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.25, 0.1, 0.25, 1],
+    },
+  },
 };
 
 // =============================================================================
-// TYPES
+// MOCK DATA — Replace with Supabase
 // =============================================================================
 
-interface DashboardPageProps {
-  searchParams: Promise<{
-    status?: LegalStatus | LegalStatus[];
-    category?: CharterCategory | CharterCategory[];
-    q?: string;
-  }>;
-}
+const mockSummary: PortfolioSummary = {
+  total_properties: 12,
+  total_value_mad: 48500000,
+  by_legal_status: {
+    Titled: 5,
+    'In-Process': 4,
+    Melkia: 3,
+  },
+  by_charter_category: {
+    A: 3,
+    B: 6,
+    C: 3,
+  },
+  average_legal_confidence: 76,
+  total_potential_cashback_mad: 6420000,
+};
+
+const mockProperties: Property[] = [
+  {
+    id: '1',
+    title_number: 'TF-12847/M',
+    requisition_number: null,
+    melkia_reference: null,
+    legal_status: 'Titled',
+    legal_confidence_score: 94,
+    gps_point: { type: 'Point', coordinates: [-7.9811, 31.6295] },
+    boundary_polygon: null,
+    cadastral_zone: 'MR-2847-014',
+    charter_category: 'A',
+    charter_score: 82,
+    charter_eligible: true,
+    estimated_cashback_pct: 10,
+    acquisition_price_mad: 4200000,
+    estimated_value_mad: 5100000,
+    price_per_sqm_mad: 12750,
+    surface_sqm: 400,
+    audit_trail: [],
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-20T14:30:00Z',
+    created_by: null,
+    updated_by: null,
+  },
+  {
+    id: '2',
+    title_number: null,
+    requisition_number: 'REQ-2024-4521',
+    melkia_reference: null,
+    legal_status: 'In-Process',
+    legal_confidence_score: 67,
+    gps_point: { type: 'Point', coordinates: [-9.7668, 31.5085] },
+    boundary_polygon: null,
+    cadastral_zone: 'SM-1247-008',
+    charter_category: 'B',
+    charter_score: 71,
+    charter_eligible: true,
+    estimated_cashback_pct: 15,
+    acquisition_price_mad: 2800000,
+    estimated_value_mad: 3200000,
+    price_per_sqm_mad: 8000,
+    surface_sqm: 400,
+    audit_trail: [],
+    created_at: '2024-02-10T09:00:00Z',
+    updated_at: '2024-02-15T11:20:00Z',
+    created_by: null,
+    updated_by: null,
+  },
+  {
+    id: '3',
+    title_number: null,
+    requisition_number: null,
+    melkia_reference: 'MLK-OZ-7842',
+    legal_status: 'Melkia',
+    legal_confidence_score: 34,
+    gps_point: { type: 'Point', coordinates: [-6.8936, 30.9189] },
+    boundary_polygon: null,
+    cadastral_zone: 'DT-7842-021',
+    charter_category: 'C',
+    charter_score: 45,
+    charter_eligible: false,
+    estimated_cashback_pct: null,
+    acquisition_price_mad: 1200000,
+    estimated_value_mad: 1400000,
+    price_per_sqm_mad: 4000,
+    surface_sqm: 350,
+    audit_trail: [],
+    created_at: '2024-03-01T08:00:00Z',
+    updated_at: '2024-03-05T16:45:00Z',
+    created_by: null,
+    updated_by: null,
+  },
+];
 
 // =============================================================================
-// DATA FETCHING (Placeholder - Connect to Supabase)
+// UTILITY — Format MAD Currency
 // =============================================================================
 
-async function getPortfolioSummary(): Promise<PortfolioSummary> {
-  // TODO: Replace with Supabase query
-  return {
-    total_properties: 0,
-    total_value_mad: 0,
-    by_legal_status: {
-      Titled: 0,
-      'In-Process': 0,
-      Melkia: 0,
-    },
-    by_charter_category: {
-      A: 0,
-      B: 0,
-      C: 0,
-    },
-    average_legal_confidence: 0,
-    total_potential_cashback_mad: 0,
-  };
-}
-
-async function getProperties(_filters: DashboardFilters): Promise<Property[]> {
-  // TODO: Replace with Supabase query with PostGIS
-  return [];
+function formatMAD(value: number): string {
+  return new Intl.NumberFormat('fr-MA', {
+    style: 'decimal',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 // =============================================================================
 // COMPONENTS
 // =============================================================================
 
-function StatCard({
+function StatBlock({
   label,
   value,
-  subvalue,
-  trend,
+  sublabel,
 }: {
   label: string;
   value: string | number;
-  subvalue?: string;
-  trend?: 'up' | 'down' | 'neutral';
+  sublabel?: string;
 }) {
   return (
-    <div className="card">
-      <div className="card-body">
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-          {label}
-        </p>
-        <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
-        {subvalue && (
-          <p
-            className={`mt-1 text-sm ${
-              trend === 'up'
-                ? 'text-emerald-600'
-                : trend === 'down'
-                  ? 'text-rose-600'
-                  : 'text-slate-500'
-            }`}
-          >
-            {subvalue}
-          </p>
-        )}
-      </div>
+    <div className="stat-block">
+      <span className="stat-label">{label}</span>
+      <span className="stat-value">{value}</span>
+      {sublabel && <span className="stat-subtext">{sublabel}</span>}
     </div>
   );
 }
 
-function LegalStatusFilter({ activeStatuses }: { activeStatuses: LegalStatus[] }) {
-  const statuses: LegalStatus[] = ['Titled', 'In-Process', 'Melkia'];
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {statuses.map((status) => {
-        const isActive = activeStatuses.includes(status);
-        return (
-          <Link
-            key={status}
-            href={`/dashboard?status=${status}`}
-            className={`
-              rounded-full px-4 py-2 text-sm font-medium transition-colors
-              ${
-                isActive
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }
-            `}
-          >
-            <VerificationBadge status={status} size="sm" showLabel />
-          </Link>
-        );
-      })}
-      <Link
-        href="/dashboard"
-        className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200"
-      >
-        Clear Filters
-      </Link>
-    </div>
-  );
-}
-
-function PropertyRow({ property }: { property: Property }) {
+function SpecimenCard({ property }: { property: Property }) {
   const identifier =
     property.title_number ||
     property.requisition_number ||
     property.melkia_reference ||
-    'No Reference';
+    'UNREGISTERED';
+
+  const gps = property.gps_point
+    ? `${property.gps_point.coordinates[1].toFixed(6)}°N, ${Math.abs(property.gps_point.coordinates[0]).toFixed(6)}°W`
+    : 'NO GPS';
 
   return (
-    <tr>
-      <td>
-        <Link
-          href={`/refinery/${property.id}`}
-          className="font-medium text-slate-900 hover:text-slate-700"
-        >
-          {identifier}
-        </Link>
-      </td>
-      <td>
-        <VerificationBadge
-          status={property.legal_status}
-          confidenceScore={property.legal_confidence_score}
-          size="sm"
-        />
-      </td>
-      <td className="mono-data">
-        {property.charter_category || '—'}
-      </td>
-      <td className="mono-data">
-        {property.estimated_cashback_pct
-          ? `${property.estimated_cashback_pct}%`
-          : '—'}
-      </td>
-      <td className="mono-data text-right">
-        {property.estimated_value_mad
-          ? new Intl.NumberFormat('fr-MA').format(property.estimated_value_mad)
-          : '—'}
-      </td>
-      <td className="text-right">
-        <Link
-          href={`/refinery/${property.id}`}
-          className="btn btn-secondary btn-sm"
-        >
-          View
-        </Link>
-      </td>
-    </tr>
+    <Link href={`/refinery/${property.id}`} className="block">
+      <article className="specimen-card group">
+        {/* Metadata Ribbon */}
+        <div className="metadata-ribbon">
+          <span>{identifier}</span>
+          <span>{gps}</span>
+        </div>
+
+        {/* Specimen Image Placeholder */}
+        <div className="aspect-[4/3] bg-[#F9F9F9] flex items-center justify-center">
+          <span className="font-mono text-xs tracking-widest opacity-30">
+            SPECIMEN {property.id}
+          </span>
+        </div>
+
+        {/* Body */}
+        <div className="specimen-body">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <LegalStamp
+                status={property.legal_status}
+                confidenceScore={property.legal_confidence_score}
+                size="sm"
+              />
+            </div>
+            <div className="text-right">
+              <p className="font-mono text-xs uppercase tracking-wider opacity-50">
+                Est. Value
+              </p>
+              <p className="font-serif text-xl">
+                {property.estimated_value_mad
+                  ? `${formatMAD(property.estimated_value_mad)} MAD`
+                  : '—'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="specimen-footer flex items-center justify-between">
+          <span className="font-mono text-xs tracking-wider opacity-50">
+            {property.cadastral_zone || 'NO ZONE'}
+          </span>
+          {property.charter_category && (
+            <span className="font-mono text-xs tracking-widest">
+              CAT {property.charter_category}
+            </span>
+          )}
+        </div>
+      </article>
+    </Link>
   );
 }
 
-function PropertiesTable({ properties }: { properties: Property[] }) {
+function SpecimenTable({ properties }: { properties: Property[] }) {
   if (properties.length === 0) {
     return (
-      <div className="card">
-        <div className="card-body py-12 text-center">
-          <p className="text-slate-500">No properties found</p>
-          <Link href="/scout" className="btn btn-primary btn-md mt-4">
-            Start Scouting
-          </Link>
-        </div>
+      <div className="py-24 text-center">
+        <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+          No specimens in collection
+        </p>
+        <Link href="/scout" className="btn-editorial mt-8 inline-block">
+          Begin Scouting
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Reference</th>
-              <th>Legal Status</th>
-              <th>Category</th>
-              <th>Cashback</th>
-              <th className="text-right">Value (MAD)</th>
-              <th className="text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {properties.map((property) => (
-              <PropertyRow key={property.id} property={property} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+    <div className="overflow-x-auto">
+      <table className="table-editorial">
+        <thead>
+          <tr>
+            <th>Reference</th>
+            <th>Status</th>
+            <th>Zone</th>
+            <th>Category</th>
+            <th className="text-right">Value (MAD)</th>
+            <th className="text-right">Cashback</th>
+          </tr>
+        </thead>
+        <tbody>
+          {properties.map((property) => {
+            const identifier =
+              property.title_number ||
+              property.requisition_number ||
+              property.melkia_reference ||
+              '—';
 
-function LoadingSkeleton() {
-  return (
-    <div className="animate-pulse space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="card">
-            <div className="card-body">
-              <div className="h-3 w-20 rounded bg-slate-200" />
-              <div className="mt-2 h-8 w-32 rounded bg-slate-200" />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="card">
-        <div className="card-body space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-12 rounded bg-slate-100" />
-          ))}
-        </div>
-      </div>
+            return (
+              <tr key={property.id}>
+                <td>
+                  <Link
+                    href={`/refinery/${property.id}`}
+                    className="font-mono text-sm hover:underline"
+                  >
+                    {identifier}
+                  </Link>
+                </td>
+                <td>
+                  <LegalStampCompact status={property.legal_status} />
+                </td>
+                <td className="font-mono text-sm opacity-70">
+                  {property.cadastral_zone || '—'}
+                </td>
+                <td className="font-mono text-sm">
+                  {property.charter_category || '—'}
+                </td>
+                <td className="text-right font-mono text-sm tabular-nums">
+                  {property.estimated_value_mad
+                    ? formatMAD(property.estimated_value_mad)
+                    : '—'}
+                </td>
+                <td className="text-right font-mono text-sm tabular-nums">
+                  {property.estimated_cashback_pct
+                    ? `${property.estimated_cashback_pct}%`
+                    : '—'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -251,139 +310,206 @@ function LoadingSkeleton() {
 // PAGE COMPONENT
 // =============================================================================
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const params = await searchParams;
-
-  // Parse filters from URL
-  const statusFilter = params.status
-    ? Array.isArray(params.status)
-      ? params.status
-      : [params.status]
-    : [];
-
-  const filters: DashboardFilters = {
-    ...(statusFilter.length > 0 && { legal_status: statusFilter }),
-    ...(params.q && { search: params.q }),
-  };
-
-  // Fetch data
-  const [summary, properties] = await Promise.all([
-    getPortfolioSummary(),
-    getProperties(filters),
-  ]);
+export default function DashboardPage() {
+  const summary = mockSummary;
+  const properties = mockProperties;
 
   return (
-    <div className="min-h-screen bg-slate-50 safe-top safe-bottom">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold text-slate-900">
-                Portfolio Dashboard
-              </h1>
-              <p className="text-sm text-slate-500">
-                Morocco 2026 Investment Charter
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Link href="/scout" className="btn btn-secondary btn-md">
-                Scout Mode
-              </Link>
-            </div>
+    <div className="min-h-screen bg-white safe-top safe-bottom">
+      {/* Navigation */}
+      <nav className="nav-editorial">
+        <div className="nav-inner">
+          <Link href="/" className="nav-logo">
+            The Damn Penguin
+          </Link>
+          <div className="nav-links">
+            <Link href="/dashboard" className="nav-link nav-link--active">
+              Portfolio
+            </Link>
+            <Link href="/scout" className="nav-link">
+              Scout
+            </Link>
           </div>
         </div>
-      </header>
+      </nav>
 
-      {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <Suspense fallback={<LoadingSkeleton />}>
-          {/* Summary Stats */}
-          <section className="mb-8">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                label="Total Properties"
+      {/* Hero Section — Massive White Space */}
+      <motion.section
+        className="whitespace-authority"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="container-editorial">
+          <motion.div variants={itemVariants}>
+            <h3 className="mb-4">Morocco 2026 Investment Charter</h3>
+          </motion.div>
+          <motion.h1 variants={itemVariants} className="mb-8 max-w-3xl">
+            Digital Investment Gallery
+          </motion.h1>
+          <motion.p
+            variants={itemVariants}
+            className="font-editorial max-w-xl text-lg opacity-70"
+          >
+            Curated property intelligence for institutional investors. Each specimen
+            verified against the Bulletin Officiel and E-Cadastre records.
+          </motion.p>
+        </div>
+      </motion.section>
+
+      {/* Stats Section */}
+      <motion.section
+        className="section-alabaster"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-100px' }}
+      >
+        <div className="container-editorial">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+            <motion.div variants={itemVariants}>
+              <StatBlock
+                label="Specimens"
                 value={summary.total_properties}
+                sublabel="In collection"
               />
-              <StatCard
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <StatBlock
                 label="Portfolio Value"
                 value={`${(summary.total_value_mad / 1_000_000).toFixed(1)}M`}
-                subvalue="MAD"
+                sublabel="MAD"
               />
-              <StatCard
-                label="Avg. Legal Confidence"
-                value={`${summary.average_legal_confidence.toFixed(0)}%`}
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <StatBlock
+                label="Avg. Confidence"
+                value={`${summary.average_legal_confidence}%`}
+                sublabel="Legal verification"
               />
-              <StatCard
-                label="Potential Cashback"
-                value={`${(summary.total_potential_cashback_mad / 1_000_000).toFixed(2)}M`}
-                subvalue="MAD (2026 Charter)"
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <StatBlock
+                label="Charter Potential"
+                value={`${(summary.total_potential_cashback_mad / 1_000_000).toFixed(1)}M`}
+                sublabel="MAD cashback"
               />
-            </div>
-          </section>
+            </motion.div>
+          </div>
+        </div>
+      </motion.section>
 
-          {/* Legal Status Breakdown */}
-          <section className="mb-8">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-500">
-              By Legal Status
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="card legal-titled">
-                <div className="card-body flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
-                    <span className="text-xl font-bold text-emerald-700">
-                      {summary.by_legal_status.Titled}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-900">Titled</p>
-                    <p className="text-sm text-slate-500">Titre Foncier</p>
-                  </div>
-                </div>
-              </div>
-              <div className="card legal-in-process">
-                <div className="card-body flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-                    <span className="text-xl font-bold text-amber-700">
-                      {summary.by_legal_status['In-Process']}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-900">In Process</p>
-                    <p className="text-sm text-slate-500">Réquisition</p>
-                  </div>
-                </div>
-              </div>
-              <div className="card legal-melkia">
-                <div className="card-body flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
-                    <span className="text-xl font-bold text-rose-700">
-                      {summary.by_legal_status.Melkia}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-900">Melkia</p>
-                    <p className="text-sm text-slate-500">Traditional</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+      {/* Status Breakdown */}
+      <motion.section
+        className="section-void"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-100px' }}
+      >
+        <div className="container-editorial">
+          <motion.div variants={itemVariants}>
+            <h3 className="mb-8">By Legal Status</h3>
+          </motion.div>
+          <div className="grid grid-cols-3 gap-px bg-[#EEEEEE]">
+            <motion.div
+              variants={itemVariants}
+              className="bg-white p-8 text-center"
+            >
+              <p className="font-serif text-5xl">{summary.by_legal_status.Titled}</p>
+              <p className="mt-2 font-mono text-xs uppercase tracking-widest opacity-50">
+                Certified
+              </p>
+            </motion.div>
+            <motion.div
+              variants={itemVariants}
+              className="bg-white p-8 text-center"
+            >
+              <p className="font-serif text-5xl">
+                {summary.by_legal_status['In-Process']}
+              </p>
+              <p className="mt-2 font-mono text-xs uppercase tracking-widest opacity-50">
+                Pending
+              </p>
+            </motion.div>
+            <motion.div
+              variants={itemVariants}
+              className="bg-white p-8 text-center"
+            >
+              <p className="font-serif text-5xl">{summary.by_legal_status.Melkia}</p>
+              <p className="mt-2 font-mono text-xs uppercase tracking-widest opacity-50">
+                Unverified
+              </p>
+            </motion.div>
+          </div>
+        </div>
+      </motion.section>
 
-          {/* Filters */}
-          <section className="mb-6">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">
-              Filter Properties
-            </h2>
-            <LegalStatusFilter activeStatuses={statusFilter} />
-          </section>
+      {/* Specimen Grid */}
+      <motion.section
+        className="section-void"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-100px' }}
+      >
+        <div className="container-editorial">
+          <motion.div
+            variants={itemVariants}
+            className="mb-8 flex items-end justify-between"
+          >
+            <h3>Specimen Catalog</h3>
+            <Link href="/scout" className="btn-editorial">
+              Add Specimen
+            </Link>
+          </motion.div>
 
-          {/* Properties Table */}
-          <section>
-            <PropertiesTable properties={properties} />
-          </section>
-        </Suspense>
-      </div>
+          {/* Grid View */}
+          <div className="grid gap-px bg-[#EEEEEE] md:grid-cols-2 lg:grid-cols-3">
+            {properties.map((property) => (
+              <motion.div
+                key={property.id}
+                variants={itemVariants}
+                className="bg-white"
+              >
+                <SpecimenCard property={property} />
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      {/* Table View */}
+      <motion.section
+        className="section-alabaster"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-100px' }}
+      >
+        <div className="container-editorial">
+          <motion.div variants={itemVariants}>
+            <h3 className="mb-8">Full Index</h3>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <SpecimenTable properties={properties} />
+          </motion.div>
+        </div>
+      </motion.section>
+
+      {/* Footer */}
+      <footer className="section-void border-t border-[#EEEEEE]">
+        <div className="container-editorial">
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+              © 2026 The Damn Penguin
+            </p>
+            <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+              Morocco Investment Charter
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -2,7 +2,35 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import type { LegalStatus, ScoutCapture, GeoPoint } from '@/types';
+import { motion } from 'framer-motion';
+import type { LegalStatus, ScoutCapture } from '@/types';
+
+// =============================================================================
+// ANIMATION VARIANTS
+// =============================================================================
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.25, 0.1, 0.25, 1],
+    },
+  },
+};
 
 // =============================================================================
 // TYPES
@@ -118,11 +146,7 @@ function useCamera() {
     ctx.drawImage(videoRef.current, 0, 0);
 
     return new Promise((resolve) => {
-      canvas.toBlob(
-        (blob) => resolve(blob),
-        'image/jpeg',
-        0.85
-      );
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.85);
     });
   }, [isActive]);
 
@@ -149,74 +173,75 @@ function GPSCapture({
   onAcquire: () => void;
 }) {
   return (
-    <div className="card">
-      <div className="card-header">
-        <h2 className="font-semibold text-slate-900">GPS Location</h2>
+    <div className="specimen-card">
+      <div className="specimen-header">
+        <h3>GPS Coordinates</h3>
       </div>
-      <div className="card-body">
+      <div className="specimen-body">
         {gps.status === 'idle' && (
-          <button onClick={onAcquire} className="btn btn-primary btn-md w-full">
-            Acquire GPS
+          <button onClick={onAcquire} className="btn-editorial w-full">
+            Acquire GPS Signal
           </button>
         )}
 
         {gps.status === 'acquiring' && (
-          <div className="flex items-center justify-center gap-3 py-4">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
-            <span className="text-slate-600">Acquiring GPS signal...</span>
+          <div className="flex items-center justify-center gap-4 py-8">
+            <div className="h-4 w-4 animate-pulse bg-black" />
+            <span className="font-mono text-xs uppercase tracking-widest">
+              Acquiring Signal...
+            </span>
           </div>
         )}
 
         {gps.status === 'acquired' && gps.position && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <span className="status-dot status-dot--active" />
-              <span className="text-sm font-medium text-emerald-700">
-                GPS Acquired
-              </span>
+              <span className="stamp stamp--certified text-[10px]">LOCKED</span>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-slate-500">Latitude</p>
-                <p className="mono-data">
-                  {gps.position.coords.latitude.toFixed(6)}
+                <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+                  Latitude
+                </p>
+                <p className="font-mono text-lg tabular-nums">
+                  {gps.position.coords.latitude.toFixed(6)}°
                 </p>
               </div>
               <div>
-                <p className="text-slate-500">Longitude</p>
-                <p className="mono-data">
-                  {gps.position.coords.longitude.toFixed(6)}
+                <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+                  Longitude
+                </p>
+                <p className="font-mono text-lg tabular-nums">
+                  {gps.position.coords.longitude.toFixed(6)}°
                 </p>
               </div>
               <div>
-                <p className="text-slate-500">Accuracy</p>
-                <p className="mono-data">
+                <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+                  Accuracy
+                </p>
+                <p className="font-mono text-lg tabular-nums">
                   {gps.position.coords.accuracy.toFixed(1)}m
                 </p>
               </div>
               <div>
-                <p className="text-slate-500">Altitude</p>
-                <p className="mono-data">
+                <p className="font-mono text-xs uppercase tracking-widest opacity-50">
+                  Altitude
+                </p>
+                <p className="font-mono text-lg tabular-nums">
                   {gps.position.coords.altitude?.toFixed(1) ?? '—'}m
                 </p>
               </div>
             </div>
-            <button
-              onClick={onAcquire}
-              className="btn btn-secondary btn-sm w-full"
-            >
+            <button onClick={onAcquire} className="btn-editorial w-full">
               Re-acquire
             </button>
           </div>
         )}
 
         {gps.status === 'error' && (
-          <div className="space-y-3">
-            <p className="text-sm text-rose-600">{gps.error}</p>
-            <button
-              onClick={onAcquire}
-              className="btn btn-secondary btn-sm w-full"
-            >
+          <div className="space-y-4">
+            <p className="font-mono text-sm">{gps.error}</p>
+            <button onClick={onAcquire} className="btn-editorial w-full">
               Try Again
             </button>
           </div>
@@ -245,15 +270,17 @@ function PhotoCapture({
   };
 
   return (
-    <div className="card">
-      <div className="card-header flex items-center justify-between">
-        <h2 className="font-semibold text-slate-900">Photo Evidence</h2>
-        <span className="text-sm text-slate-500">{photos.length} captured</span>
+    <div className="specimen-card">
+      <div className="specimen-header flex items-center justify-between">
+        <h3>Photo Evidence</h3>
+        <span className="font-mono text-xs tabular-nums opacity-50">
+          {photos.length} CAPTURED
+        </span>
       </div>
-      <div className="card-body">
+      <div className="specimen-body">
         {/* Camera Preview */}
         {camera.isActive && (
-          <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-lg bg-black">
+          <div className="relative mb-4 aspect-[4/3] overflow-hidden bg-black">
             <video
               ref={camera.videoRef}
               autoPlay
@@ -261,18 +288,17 @@ function PhotoCapture({
               muted
               className="h-full w-full object-cover"
             />
-            <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-3">
+            {/* Crosshair */}
+            <div className="crosshair-overlay" />
+            <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-4">
               <button
                 onClick={handleCapture}
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg"
+                className="flex h-16 w-16 items-center justify-center border-2 border-white bg-transparent"
                 aria-label="Capture photo"
               >
-                <div className="h-12 w-12 rounded-full border-4 border-slate-900" />
+                <div className="h-10 w-10 border-2 border-white" />
               </button>
-              <button
-                onClick={camera.stop}
-                className="btn btn-secondary btn-md"
-              >
+              <button onClick={camera.stop} className="btn-editorial bg-white">
                 Close
               </button>
             </div>
@@ -281,31 +307,28 @@ function PhotoCapture({
 
         {/* Start Camera Button */}
         {!camera.isActive && (
-          <button
-            onClick={camera.start}
-            className="btn btn-primary btn-md w-full"
-          >
+          <button onClick={camera.start} className="btn-editorial w-full">
             Open Camera
           </button>
         )}
 
         {camera.error && (
-          <p className="mt-2 text-sm text-rose-600">{camera.error}</p>
+          <p className="mt-2 font-mono text-xs">{camera.error}</p>
         )}
 
         {/* Photo Grid */}
         {photos.length > 0 && (
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-3 gap-px bg-[#EEEEEE]">
             {photos.map((photo) => (
-              <div key={photo.id} className="group relative aspect-square">
+              <div key={photo.id} className="group relative aspect-square bg-white">
                 <img
                   src={photo.preview}
                   alt="Captured"
-                  className="h-full w-full rounded-lg object-cover"
+                  className="h-full w-full object-cover"
                 />
                 <button
                   onClick={() => onRemove(photo.id)}
-                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center bg-black text-white opacity-0 transition-opacity group-hover:opacity-100"
                   aria-label="Remove photo"
                 >
                   ×
@@ -326,28 +349,28 @@ function LegalStatusSelect({
   value: LegalStatus;
   onChange: (status: LegalStatus) => void;
 }) {
-  const options: { value: LegalStatus; label: string; description: string }[] = [
-    { value: 'Titled', label: 'Titled', description: 'Titre Foncier confirmed' },
-    { value: 'In-Process', label: 'In Process', description: 'Réquisition filed' },
-    { value: 'Melkia', label: 'Melkia', description: 'Traditional ownership' },
+  const options: { value: LegalStatus; label: string; sublabel: string }[] = [
+    { value: 'Titled', label: 'CERTIFIED', sublabel: 'Titre Foncier confirmed' },
+    { value: 'In-Process', label: 'PENDING', sublabel: 'Réquisition filed' },
+    { value: 'Melkia', label: 'UNVERIFIED', sublabel: 'Traditional ownership' },
   ];
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <h2 className="font-semibold text-slate-900">Legal Status</h2>
+    <div className="specimen-card">
+      <div className="specimen-header">
+        <h3>Legal Status</h3>
       </div>
-      <div className="card-body space-y-2">
+      <div className="specimen-body space-y-2">
         {options.map((option) => (
           <label
             key={option.value}
             className={`
-              flex cursor-pointer items-center gap-3 rounded-lg border p-3
+              flex cursor-pointer items-center gap-4 border p-4
               transition-colors
               ${
                 value === option.value
-                  ? 'border-slate-900 bg-slate-50'
-                  : 'border-slate-200 hover:border-slate-300'
+                  ? 'border-black bg-[#F9F9F9]'
+                  : 'border-[#EEEEEE] hover:border-[#DDDDDD]'
               }
             `}
           >
@@ -361,21 +384,19 @@ function LegalStatusSelect({
             />
             <div
               className={`
-                flex h-5 w-5 items-center justify-center rounded-full border-2
-                ${
-                  value === option.value
-                    ? 'border-slate-900 bg-slate-900'
-                    : 'border-slate-300'
-                }
+                flex h-4 w-4 items-center justify-center border-2
+                ${value === option.value ? 'border-black' : 'border-[#DDDDDD]'}
               `}
             >
               {value === option.value && (
-                <div className="h-2 w-2 rounded-full bg-white" />
+                <div className="h-2 w-2 bg-black" />
               )}
             </div>
             <div>
-              <p className="font-medium text-slate-900">{option.label}</p>
-              <p className="text-sm text-slate-500">{option.description}</p>
+              <p className="font-mono text-sm font-semibold tracking-wider">
+                {option.label}
+              </p>
+              <p className="font-mono text-xs opacity-50">{option.sublabel}</p>
             </div>
           </label>
         ))}
@@ -440,58 +461,107 @@ export default function ScoutPage() {
   const canSubmit = gps.status === 'acquired' && photos.length > 0;
 
   return (
-    <div className="min-h-screen bg-slate-100 safe-top safe-bottom">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/dashboard" className="text-slate-600">
-            ← Back
+    <div className="min-h-screen bg-white safe-top safe-bottom">
+      {/* Navigation */}
+      <nav className="nav-editorial">
+        <div className="nav-inner">
+          <Link href="/" className="nav-logo">
+            The Damn Penguin
           </Link>
-          <h1 className="font-semibold text-slate-900">Scout Mode</h1>
-          <div className="w-12" />
+          <div className="nav-links">
+            <Link href="/dashboard" className="nav-link">
+              Portfolio
+            </Link>
+            <Link href="/scout" className="nav-link nav-link--active">
+              Scout
+            </Link>
+          </div>
         </div>
-      </header>
+      </nav>
+
+      {/* Header */}
+      <motion.header
+        className="border-b border-[#EEEEEE]"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="container-narrow py-8">
+          <motion.div variants={itemVariants}>
+            <Link
+              href="/dashboard"
+              className="font-mono text-xs uppercase tracking-widest opacity-50 hover:opacity-100"
+            >
+              ← Back to Portfolio
+            </Link>
+          </motion.div>
+          <motion.h1 variants={itemVariants} className="mt-6 font-serif">
+            Field Scout
+          </motion.h1>
+          <motion.p
+            variants={itemVariants}
+            className="mt-2 font-mono text-sm uppercase tracking-wider opacity-50"
+          >
+            Capture specimen data for verification
+          </motion.p>
+        </div>
+      </motion.header>
 
       {/* Main Content */}
-      <div className="mx-auto max-w-lg space-y-4 p-4">
-        {/* GPS */}
-        <GPSCapture gps={gps} onAcquire={gps.acquire} />
+      <motion.section
+        className="section-void"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="container-narrow space-y-6">
+          <motion.div variants={itemVariants}>
+            <GPSCapture gps={gps} onAcquire={gps.acquire} />
+          </motion.div>
 
-        {/* Photos */}
-        <PhotoCapture
-          photos={photos}
-          onCapture={handlePhotoCapture}
-          onRemove={handlePhotoRemove}
-        />
-
-        {/* Legal Status */}
-        <LegalStatusSelect value={legalStatus} onChange={setLegalStatus} />
-
-        {/* Notes */}
-        <div className="card">
-          <div className="card-header">
-            <h2 className="font-semibold text-slate-900">Field Notes</h2>
-          </div>
-          <div className="card-body">
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Access conditions, visible boundaries, contact details..."
-              rows={4}
-              className="input resize-none"
+          <motion.div variants={itemVariants}>
+            <PhotoCapture
+              photos={photos}
+              onCapture={handlePhotoCapture}
+              onRemove={handlePhotoRemove}
             />
-          </div>
-        </div>
+          </motion.div>
 
-        {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit || isSubmitting}
-          className="btn btn-primary btn-lg w-full"
-        >
-          {isSubmitting ? 'Saving...' : 'Save Scout Report'}
-        </button>
-      </div>
+          <motion.div variants={itemVariants}>
+            <LegalStatusSelect value={legalStatus} onChange={setLegalStatus} />
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <div className="specimen-card">
+              <div className="specimen-header">
+                <h3>Field Notes</h3>
+              </div>
+              <div className="specimen-body">
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="ACCESS CONDITIONS, VISIBLE BOUNDARIES, CONTACT DETAILS..."
+                  rows={4}
+                  className="input-editorial resize-none"
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit || isSubmitting}
+              className={`
+                btn-editorial btn-editorial--filled w-full py-4
+                ${(!canSubmit || isSubmitting) && 'opacity-30 cursor-not-allowed'}
+              `}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Scout Report'}
+            </button>
+          </motion.div>
+        </div>
+      </motion.section>
     </div>
   );
 }

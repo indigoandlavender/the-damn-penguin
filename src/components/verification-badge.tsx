@@ -6,120 +6,67 @@ import type { LegalStatus } from '@/types';
 // TYPES
 // =============================================================================
 
-interface VerificationBadgeProps {
+interface LegalStampProps {
   status: LegalStatus;
   confidenceScore?: number | null;
   size?: 'sm' | 'md' | 'lg';
-  showLabel?: boolean;
 }
 
-interface BadgeConfig {
+interface StampConfig {
   label: string;
-  shortLabel: string;
-  bgColor: string;
-  textColor: string;
-  borderColor: string;
-  dotColor: string;
-  description: string;
+  sublabel: string;
+  style: 'certified' | 'pending' | 'unverified';
 }
 
 // =============================================================================
-// CONFIGURATION
+// CONFIGURATION — No Traffic Light Colors
 // =============================================================================
 
-const BADGE_CONFIG: Record<LegalStatus, BadgeConfig> = {
+const STAMP_CONFIG: Record<LegalStatus, StampConfig> = {
   Titled: {
-    label: 'Titled',
-    shortLabel: 'TF',
-    bgColor: 'bg-emerald-50',
-    textColor: 'text-emerald-700',
-    borderColor: 'border-emerald-200',
-    dotColor: 'bg-emerald-500',
-    description: 'Full freehold title (Titre Foncier)',
+    label: 'CERTIFIED',
+    sublabel: 'Titre Foncier',
+    style: 'certified',
   },
   'In-Process': {
-    label: 'In Process',
-    shortLabel: 'REQ',
-    bgColor: 'bg-amber-50',
-    textColor: 'text-amber-700',
-    borderColor: 'border-amber-200',
-    dotColor: 'bg-amber-500',
-    description: 'Title registration in progress (Réquisition)',
+    label: 'PENDING',
+    sublabel: 'Réquisition',
+    style: 'pending',
   },
   Melkia: {
-    label: 'Melkia',
-    shortLabel: 'MLK',
-    bgColor: 'bg-rose-50',
-    textColor: 'text-rose-700',
-    borderColor: 'border-rose-200',
-    dotColor: 'bg-rose-500',
-    description: 'Traditional ownership - requires conversion',
+    label: 'UNVERIFIED',
+    sublabel: 'Traditional',
+    style: 'unverified',
   },
 };
 
 const SIZE_CLASSES = {
-  sm: {
-    badge: 'px-2 py-0.5 text-xs',
-    dot: 'h-1.5 w-1.5',
-    score: 'text-[10px]',
-  },
-  md: {
-    badge: 'px-2.5 py-1 text-sm',
-    dot: 'h-2 w-2',
-    score: 'text-xs',
-  },
-  lg: {
-    badge: 'px-3 py-1.5 text-base',
-    dot: 'h-2.5 w-2.5',
-    score: 'text-sm',
-  },
+  sm: 'px-2 py-1 text-[10px]',
+  md: 'px-3 py-1.5 text-xs',
+  lg: 'px-4 py-2 text-sm',
 };
 
 // =============================================================================
-// COMPONENT
+// LEGAL STAMP — Document Verification Aesthetic
 // =============================================================================
 
-export function VerificationBadge({
-  status,
-  confidenceScore,
-  size = 'md',
-  showLabel = true,
-}: VerificationBadgeProps) {
-  const config = BADGE_CONFIG[status];
-  const sizeClasses = SIZE_CLASSES[size];
+export function LegalStamp({ status, confidenceScore, size = 'md' }: LegalStampProps) {
+  const config = STAMP_CONFIG[status];
+  const sizeClass = SIZE_CLASSES[size];
 
   return (
-    <div
-      className={`
-        inline-flex items-center gap-1.5 rounded-full border font-medium
-        ${config.bgColor} ${config.textColor} ${config.borderColor}
-        ${sizeClasses.badge}
-      `}
-      title={config.description}
-    >
-      {/* Status indicator dot */}
+    <div className="inline-flex flex-col items-start gap-0.5">
       <span
         className={`
-          rounded-full ${config.dotColor} ${sizeClasses.dot}
-          animate-pulse
+          stamp stamp--${config.style} ${sizeClass}
+          font-mono font-semibold tracking-widest
         `}
-        aria-hidden="true"
-      />
-
-      {/* Label */}
-      {showLabel && (
-        <span>{config.label}</span>
-      )}
-
-      {/* Confidence score */}
-      {confidenceScore !== undefined && confidenceScore !== null && (
-        <span
-          className={`
-            ml-0.5 font-mono ${sizeClasses.score}
-            opacity-75
-          `}
-        >
-          {Math.round(confidenceScore)}%
+      >
+        {config.label}
+      </span>
+      {confidenceScore !== null && confidenceScore !== undefined && (
+        <span className="font-mono text-[10px] tracking-wider opacity-50">
+          {Math.round(confidenceScore)}% CONFIDENCE
         </span>
       )}
     </div>
@@ -127,57 +74,50 @@ export function VerificationBadge({
 }
 
 // =============================================================================
-// COMPACT VARIANT
+// COMPACT STAMP — For Tables
 // =============================================================================
 
-interface CompactBadgeProps {
-  status: LegalStatus;
-}
-
-export function VerificationBadgeCompact({ status }: CompactBadgeProps) {
-  const config = BADGE_CONFIG[status];
+export function LegalStampCompact({ status }: { status: LegalStatus }) {
+  const config = STAMP_CONFIG[status];
 
   return (
     <span
       className={`
-        inline-flex h-6 w-6 items-center justify-center
-        rounded-full text-[10px] font-bold
-        ${config.bgColor} ${config.textColor} ${config.borderColor}
-        border
+        inline-block font-mono text-[10px] font-semibold tracking-widest
+        ${config.style === 'certified' ? 'text-black' : ''}
+        ${config.style === 'pending' ? 'text-black opacity-70' : ''}
+        ${config.style === 'unverified' ? 'text-black opacity-40' : ''}
       `}
-      title={config.description}
     >
-      {config.shortLabel}
+      {config.label}
     </span>
   );
 }
 
 // =============================================================================
-// LEGAL CONFIDENCE METER
+// CONFIDENCE METER — Minimalist Bar
 // =============================================================================
 
-interface LegalConfidenceMeterProps {
+interface ConfidenceMeterProps {
   score: number;
-  status: LegalStatus;
 }
 
-export function LegalConfidenceMeter({ score, status }: LegalConfidenceMeterProps) {
-  const config = BADGE_CONFIG[status];
+export function ConfidenceMeter({ score }: ConfidenceMeterProps) {
   const clampedScore = Math.max(0, Math.min(100, score));
 
   return (
     <div className="w-full">
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-600">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-mono text-xs uppercase tracking-widest opacity-60">
           Legal Confidence
         </span>
-        <span className={`text-xs font-mono font-bold ${config.textColor}`}>
+        <span className="font-mono text-xs font-semibold tabular-nums">
           {Math.round(clampedScore)}%
         </span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+      <div className="h-px w-full bg-[#EEEEEE]">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${config.dotColor}`}
+          className="h-px bg-black transition-all duration-500"
           style={{ width: `${clampedScore}%` }}
         />
       </div>
@@ -186,8 +126,87 @@ export function LegalConfidenceMeter({ score, status }: LegalConfidenceMeterProp
 }
 
 // =============================================================================
-// EXPORTS
+// FULL VERIFICATION BLOCK — For Property Detail Pages
 // =============================================================================
 
-export { BADGE_CONFIG };
-export type { VerificationBadgeProps, BadgeConfig };
+interface VerificationBlockProps {
+  status: LegalStatus;
+  confidenceScore?: number | null;
+  titleNumber?: string | null;
+  requisitionNumber?: string | null;
+  melkiaReference?: string | null;
+}
+
+export function VerificationBlock({
+  status,
+  confidenceScore,
+  titleNumber,
+  requisitionNumber,
+  melkiaReference,
+}: VerificationBlockProps) {
+  const config = STAMP_CONFIG[status];
+
+  return (
+    <div className="specimen-card">
+      <div className="specimen-header">
+        <h3>Legal Status</h3>
+      </div>
+      <div className="specimen-body space-y-6">
+        {/* Main Stamp */}
+        <div className="flex items-start justify-between">
+          <div>
+            <span
+              className={`stamp stamp--${config.style} text-sm font-semibold tracking-widest`}
+            >
+              {config.label}
+            </span>
+            <p className="mt-2 font-mono text-xs uppercase tracking-wider opacity-50">
+              {config.sublabel}
+            </p>
+          </div>
+        </div>
+
+        {/* Confidence Meter */}
+        {confidenceScore !== null && confidenceScore !== undefined && (
+          <ConfidenceMeter score={confidenceScore} />
+        )}
+
+        {/* Reference Numbers */}
+        <div className="space-y-3 border-t border-[#EEEEEE] pt-4">
+          {titleNumber && (
+            <div className="flex justify-between">
+              <span className="font-mono text-xs uppercase tracking-wider opacity-50">
+                Title Number
+              </span>
+              <span className="font-mono text-sm tabular-nums">{titleNumber}</span>
+            </div>
+          )}
+          {requisitionNumber && (
+            <div className="flex justify-between">
+              <span className="font-mono text-xs uppercase tracking-wider opacity-50">
+                Requisition
+              </span>
+              <span className="font-mono text-sm tabular-nums">{requisitionNumber}</span>
+            </div>
+          )}
+          {melkiaReference && (
+            <div className="flex justify-between">
+              <span className="font-mono text-xs uppercase tracking-wider opacity-50">
+                Melkia Ref
+              </span>
+              <span className="font-mono text-sm tabular-nums">{melkiaReference}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// LEGACY EXPORTS — Backward Compatibility
+// =============================================================================
+
+export { LegalStamp as VerificationBadge };
+export { ConfidenceMeter as LegalConfidenceMeter };
+export { STAMP_CONFIG as BADGE_CONFIG };

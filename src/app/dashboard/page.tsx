@@ -1,18 +1,19 @@
 'use client';
 
+import { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { LegalStamp, LegalStampCompact } from '@/components/verification-badge';
-import { CinematicMap, type LandParcel } from '@/components/cinematic-map';
+import { LegalStamp } from '@/components/verification-badge';
+import { CinematicMap, type CinematicMapHandle, type LandParcel } from '@/components/cinematic-map';
 import type {
   LegalStatus,
-  CharterCategory,
-  PortfolioSummary,
+  CityClassification,
+  VerificationStatus,
   Property,
 } from '@/types';
 
 // =============================================================================
-// ANIMATION VARIANTS — Staggered Entrance (10-20px slide, no bounce)
+// ANIMATION VARIANTS — Staggered Entrance
 // =============================================================================
 
 const containerVariants = {
@@ -20,44 +21,39 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.08,
+      staggerChildren: 0.06,
       delayChildren: 0.1,
     },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
+  hidden: { opacity: 0, y: 12 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.5,
+      duration: 0.4,
       ease: [0.25, 0.1, 0.25, 1],
     },
   },
 };
 
 // =============================================================================
-// MOCK DATA — Replace with Supabase
+// REGIONAL FILTER OPTIONS
 // =============================================================================
 
-const mockSummary: PortfolioSummary = {
-  total_properties: 12,
-  total_value_mad: 48500000,
-  by_legal_status: {
-    Titled: 5,
-    'In-Process': 4,
-    Melkia: 3,
-  },
-  by_charter_category: {
-    A: 3,
-    B: 6,
-    C: 3,
-  },
-  average_legal_confidence: 76,
-  total_potential_cashback_mad: 6420000,
-};
+const REGIONS: { value: CityClassification | 'all'; label: string; italicLabel?: string }[] = [
+  { value: 'all', label: 'ALL REGIONS' },
+  { value: 'Marrakech', label: 'Marrakech' },
+  { value: 'Fes', label: '', italicLabel: 'Fès' },
+  { value: 'Essaouira', label: '', italicLabel: 'Essaouira' },
+  { value: 'Ouarzazate', label: '', italicLabel: 'Ouarzazate' },
+];
+
+// =============================================================================
+// MOCK DATA — Regional Properties
+// =============================================================================
 
 const mockProperties: Property[] = [
   {
@@ -67,17 +63,30 @@ const mockProperties: Property[] = [
     melkia_reference: null,
     legal_status: 'Titled',
     legal_confidence_score: 94,
+    cadastre_status: 'OK',
+    heirs_status: 'OK',
+    encumbrance_status: 'OK',
+    occupation_status: 'OK',
     gps_point: { type: 'Point', coordinates: [-7.9811, 31.6295] },
     boundary_polygon: null,
     cadastral_zone: 'MR-2847-014',
+    region: 'Marrakech-Safi',
+    city: 'Marrakech',
+    neighborhood: 'Médina',
+    street_address: null,
     charter_category: 'A',
     charter_score: 82,
     charter_eligible: true,
     estimated_cashback_pct: 10,
-    acquisition_price_mad: 4200000,
+    acquisition_price_mad: 5100000,
     estimated_value_mad: 5100000,
     price_per_sqm_mad: 12750,
     surface_sqm: 400,
+    net_acquisition_cost_mad: 4590000,
+    property_type: 'Riad',
+    construction_year: 1890,
+    rooms: 7,
+    floors: 2,
     audit_trail: [],
     created_at: '2024-01-15T10:00:00Z',
     updated_at: '2024-01-20T14:30:00Z',
@@ -91,17 +100,30 @@ const mockProperties: Property[] = [
     melkia_reference: null,
     legal_status: 'In-Process',
     legal_confidence_score: 67,
+    cadastre_status: 'OK',
+    heirs_status: 'PENDING',
+    encumbrance_status: 'OK',
+    occupation_status: 'OK',
     gps_point: { type: 'Point', coordinates: [-9.7668, 31.5085] },
     boundary_polygon: null,
-    cadastral_zone: 'SM-1247-008',
+    cadastral_zone: 'ES-1247-008',
+    region: 'Marrakech-Safi',
+    city: 'Essaouira',
+    neighborhood: 'Médina',
+    street_address: null,
     charter_category: 'B',
     charter_score: 71,
     charter_eligible: true,
     estimated_cashback_pct: 15,
-    acquisition_price_mad: 2800000,
+    acquisition_price_mad: 3200000,
     estimated_value_mad: 3200000,
-    price_per_sqm_mad: 8000,
-    surface_sqm: 400,
+    price_per_sqm_mad: 9142,
+    surface_sqm: 350,
+    net_acquisition_cost_mad: 2720000,
+    property_type: 'Dar',
+    construction_year: 1920,
+    rooms: 5,
+    floors: 2,
     audit_trail: [],
     created_at: '2024-02-10T09:00:00Z',
     updated_at: '2024-02-15T11:20:00Z',
@@ -110,85 +132,103 @@ const mockProperties: Property[] = [
   },
   {
     id: '3',
-    title_number: null,
+    title_number: 'TF-5521/F',
     requisition_number: null,
-    melkia_reference: 'MLK-OZ-7842',
-    legal_status: 'Melkia',
-    legal_confidence_score: 34,
-    gps_point: { type: 'Point', coordinates: [-6.8936, 30.9189] },
+    melkia_reference: null,
+    legal_status: 'Titled',
+    legal_confidence_score: 91,
+    cadastre_status: 'OK',
+    heirs_status: 'OK',
+    encumbrance_status: 'OK',
+    occupation_status: 'OK',
+    gps_point: { type: 'Point', coordinates: [-5.0003, 34.0333] },
     boundary_polygon: null,
-    cadastral_zone: 'DT-7842-021',
-    charter_category: 'C',
-    charter_score: 45,
-    charter_eligible: false,
-    estimated_cashback_pct: null,
-    acquisition_price_mad: 1200000,
-    estimated_value_mad: 1400000,
-    price_per_sqm_mad: 4000,
-    surface_sqm: 350,
+    cadastral_zone: 'FS-5521-012',
+    region: 'Fes-Meknes',
+    city: 'Fes',
+    neighborhood: 'Fes el-Bali',
+    street_address: null,
+    charter_category: 'B',
+    charter_score: 78,
+    charter_eligible: true,
+    estimated_cashback_pct: 15,
+    acquisition_price_mad: 3800000,
+    estimated_value_mad: 3800000,
+    price_per_sqm_mad: 7916,
+    surface_sqm: 480,
+    net_acquisition_cost_mad: 3230000,
+    property_type: 'Riad',
+    construction_year: 1850,
+    rooms: 9,
+    floors: 2,
     audit_trail: [],
     created_at: '2024-03-01T08:00:00Z',
     updated_at: '2024-03-05T16:45:00Z',
     created_by: null,
     updated_by: null,
   },
+  {
+    id: '4',
+    title_number: null,
+    requisition_number: null,
+    melkia_reference: 'MLK-OZ-7842',
+    legal_status: 'Melkia',
+    legal_confidence_score: 34,
+    cadastre_status: 'PENDING',
+    heirs_status: 'PENDING',
+    encumbrance_status: 'FAILED',
+    occupation_status: 'OK',
+    gps_point: { type: 'Point', coordinates: [-6.8936, 30.9189] },
+    boundary_polygon: null,
+    cadastral_zone: 'OZ-7842-021',
+    region: 'Draa-Tafilalet',
+    city: 'Ouarzazate',
+    neighborhood: 'Kasbah Taourirt',
+    street_address: null,
+    charter_category: 'C',
+    charter_score: 45,
+    charter_eligible: true,
+    estimated_cashback_pct: 20,
+    acquisition_price_mad: 1400000,
+    estimated_value_mad: 1400000,
+    price_per_sqm_mad: 4000,
+    surface_sqm: 350,
+    net_acquisition_cost_mad: 1120000,
+    property_type: 'Kasbah',
+    construction_year: 1780,
+    rooms: 12,
+    floors: 3,
+    audit_trail: [],
+    created_at: '2024-03-10T08:00:00Z',
+    updated_at: '2024-03-15T16:45:00Z',
+    created_by: null,
+    updated_by: null,
+  },
 ];
 
-// Mock parcels for map visualization
-const mockParcels: LandParcel[] = [
-  {
-    id: 'parcel-1',
-    property_id: '1',
-    polygon: {
-      type: 'Polygon',
-      coordinates: [[
-        [-7.9815, 31.6300],
-        [-7.9807, 31.6300],
-        [-7.9807, 31.6290],
-        [-7.9815, 31.6290],
-        [-7.9815, 31.6300],
-      ]],
-    },
-    legal_status: 'Titled',
-    title_number: 'TF-12847/M',
-    estimated_value_mad: 5100000,
+// Convert properties to map parcels
+const mockParcels: LandParcel[] = mockProperties.map((p) => ({
+  id: `parcel-${p.id}`,
+  property_id: p.id,
+  polygon: {
+    type: 'Polygon' as const,
+    coordinates: p.gps_point
+      ? [[
+          [p.gps_point.coordinates[0] - 0.0004, p.gps_point.coordinates[1] + 0.0005],
+          [p.gps_point.coordinates[0] + 0.0004, p.gps_point.coordinates[1] + 0.0005],
+          [p.gps_point.coordinates[0] + 0.0004, p.gps_point.coordinates[1] - 0.0005],
+          [p.gps_point.coordinates[0] - 0.0004, p.gps_point.coordinates[1] - 0.0005],
+          [p.gps_point.coordinates[0] - 0.0004, p.gps_point.coordinates[1] + 0.0005],
+        ]]
+      : [[[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]],
   },
-  {
-    id: 'parcel-2',
-    property_id: '2',
-    polygon: {
-      type: 'Polygon',
-      coordinates: [[
-        [-9.7672, 31.5090],
-        [-9.7664, 31.5090],
-        [-9.7664, 31.5080],
-        [-9.7672, 31.5080],
-        [-9.7672, 31.5090],
-      ]],
-    },
-    legal_status: 'In-Process',
-    estimated_value_mad: 3200000,
-  },
-  {
-    id: 'parcel-3',
-    property_id: '3',
-    polygon: {
-      type: 'Polygon',
-      coordinates: [[
-        [-6.8940, 30.9194],
-        [-6.8932, 30.9194],
-        [-6.8932, 30.9184],
-        [-6.8940, 30.9184],
-        [-6.8940, 30.9194],
-      ]],
-    },
-    legal_status: 'Melkia',
-    estimated_value_mad: 1400000,
-  },
-];
+  legal_status: p.legal_status,
+  title_number: p.title_number ?? undefined,
+  estimated_value_mad: p.estimated_value_mad ?? undefined,
+}));
 
 // =============================================================================
-// UTILITY — Format MAD Currency
+// UTILITY FUNCTIONS
 // =============================================================================
 
 function formatMAD(value: number): string {
@@ -199,29 +239,101 @@ function formatMAD(value: number): string {
   }).format(value);
 }
 
+function formatConfidenceBreakdown(property: Property): string {
+  const items: string[] = [];
+  if (property.cadastre_status) items.push(`CADASTRE: ${property.cadastre_status}`);
+  if (property.heirs_status) items.push(`HEIRS: ${property.heirs_status}`);
+  return items.join(' | ');
+}
+
 // =============================================================================
 // COMPONENTS
 // =============================================================================
 
-function StatBlock({
-  label,
+function RegionalToggle({
   value,
-  sublabel,
+  onChange,
 }: {
-  label: string;
-  value: string | number;
-  sublabel?: string;
+  value: CityClassification | 'all';
+  onChange: (value: CityClassification | 'all') => void;
 }) {
   return (
-    <div className="stat-block">
-      <span className="stat-label">{label}</span>
-      <span className="stat-value">{value}</span>
-      {sublabel && <span className="stat-subtext">{sublabel}</span>}
+    <div className="flex items-center gap-1 border-b border-[#EEEEEE]">
+      {REGIONS.map((region) => (
+        <button
+          key={region.value}
+          onClick={() => onChange(region.value)}
+          className={`
+            px-4 py-3 font-mono text-[10px] uppercase tracking-widest
+            transition-all
+            ${value === region.value
+              ? 'border-b-2 border-black text-black'
+              : 'text-black/40 hover:text-black/70'
+            }
+          `}
+        >
+          {region.italicLabel ? (
+            <em className="font-serif text-xs not-italic">{region.italicLabel}</em>
+          ) : (
+            region.label
+          )}
+        </button>
+      ))}
     </div>
   );
 }
 
-function SpecimenCard({ property }: { property: Property }) {
+function BankStatementHeader({
+  portfolioValue,
+  charterPotential,
+  totalNetCost,
+}: {
+  portfolioValue: number;
+  charterPotential: number;
+  totalNetCost: number;
+}) {
+  return (
+    <div className="flex items-center border-b border-black">
+      <div className="flex-1 border-r border-[#EEEEEE] px-6 py-4">
+        <p className="font-mono text-[10px] uppercase tracking-widest opacity-40">
+          Portfolio Value
+        </p>
+        <p className="font-mono text-2xl tracking-tighter">
+          {formatMAD(portfolioValue)}
+          <span className="ml-1 text-xs opacity-40">MAD</span>
+        </p>
+      </div>
+      <div className="flex-1 border-r border-[#EEEEEE] px-6 py-4">
+        <p className="font-mono text-[10px] uppercase tracking-widest opacity-40">
+          Charter Potential
+        </p>
+        <p className="font-mono text-2xl tracking-tighter">
+          {formatMAD(charterPotential)}
+          <span className="ml-1 text-xs opacity-40">MAD</span>
+        </p>
+      </div>
+      <div className="flex-1 px-6 py-4">
+        <p className="font-mono text-[10px] uppercase tracking-widest opacity-40">
+          Net Acquisition
+        </p>
+        <p className="font-mono text-2xl tracking-tighter">
+          {formatMAD(totalNetCost)}
+          <span className="ml-1 text-xs opacity-40">MAD</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SpecimenCard({
+  property,
+  onHover,
+  onLeave,
+}: {
+  property: Property;
+  onHover: () => void;
+  onLeave: () => void;
+}) {
   const identifier =
     property.title_number ||
     property.requisition_number ||
@@ -229,134 +341,76 @@ function SpecimenCard({ property }: { property: Property }) {
     'UNREGISTERED';
 
   const gps = property.gps_point
-    ? `${property.gps_point.coordinates[1].toFixed(6)}°N, ${Math.abs(property.gps_point.coordinates[0]).toFixed(6)}°W`
-    : 'NO GPS';
+    ? `${property.gps_point.coordinates[1].toFixed(6)}°N`
+    : '—';
 
   return (
-    <Link href={`/refinery/${property.id}`} className="block">
-      <article className="specimen-card group">
-        {/* Metadata Ribbon */}
-        <div className="metadata-ribbon">
-          <span>{identifier}</span>
-          <span>{gps}</span>
-        </div>
-
-        {/* Specimen Image Placeholder */}
-        <div className="aspect-[4/3] bg-[#F9F9F9] flex items-center justify-center">
-          <span className="font-mono text-xs tracking-widest opacity-30">
-            SPECIMEN {property.id}
+    <Link href={`/refinery/${property.id}`}>
+      <article
+        className="group border-b border-[#EEEEEE] transition-colors hover:bg-[#FAFAFA]"
+        onMouseEnter={onHover}
+        onMouseLeave={onLeave}
+      >
+        {/* Technical Label Row */}
+        <div className="flex items-center justify-between px-6 py-3">
+          <span className="font-mono text-[10px] tracking-widest">
+            {identifier}
           </span>
+          <LegalStamp status={property.legal_status} size="sm" />
         </div>
 
-        {/* Body */}
-        <div className="specimen-body">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <LegalStamp
-                status={property.legal_status}
-                confidenceScore={property.legal_confidence_score}
-                size="sm"
-              />
-            </div>
-            <div className="text-right">
-              <p className="font-mono text-xs uppercase tracking-wider opacity-50">
-                Est. Value
-              </p>
-              <p className="font-serif text-xl">
-                {property.estimated_value_mad
-                  ? `${formatMAD(property.estimated_value_mad)} MAD`
-                  : '—'}
-              </p>
-            </div>
+        {/* Image — Full width, no padding, natural aspect */}
+        <div className="aspect-[16/10] bg-[#F5F5F5]">
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="font-mono text-xs tracking-widest opacity-20">
+              {property.property_type?.toUpperCase() || 'SPECIMEN'} — {property.city}
+            </span>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="specimen-footer flex items-center justify-between">
-          <span className="font-mono text-xs tracking-wider opacity-50">
-            {property.cadastral_zone || 'NO ZONE'}
-          </span>
-          {property.charter_category && (
-            <span className="font-mono text-xs tracking-widest">
-              CAT {property.charter_category}
+        {/* Data Block */}
+        <div className="px-6 py-4">
+          {/* Region & City */}
+          <p className="font-serif text-lg">
+            <em>{property.city}</em>
+            <span className="mx-2 opacity-20">·</span>
+            <span className="font-mono text-xs tracking-wider opacity-50">
+              {property.neighborhood}
             </span>
-          )}
+          </p>
+
+          {/* Technical Data Row */}
+          <div className="mt-3 flex items-end justify-between">
+            <div>
+              <p className="font-mono text-[10px] tracking-widest opacity-40">
+                {gps}
+              </p>
+              <p className="font-mono text-[10px] tracking-widest opacity-40">
+                {property.cadastral_zone}
+              </p>
+            </div>
+
+            {/* Net Acquisition Cost */}
+            {property.acquisition_price_mad && property.net_acquisition_cost_mad && (
+              <div className="text-right">
+                <p className="font-mono text-xs tracking-tighter line-through opacity-30">
+                  {formatMAD(property.acquisition_price_mad)} MAD
+                </p>
+                <p className="font-mono text-sm tracking-tighter">
+                  {formatMAD(property.net_acquisition_cost_mad)} MAD
+                  <span className="ml-1 text-[10px] opacity-50">(NET)</span>
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Audit Footnote */}
+          <p className="mt-3 font-mono text-[9px] tracking-wider opacity-40">
+            [{formatConfidenceBreakdown(property)}]
+          </p>
         </div>
       </article>
     </Link>
-  );
-}
-
-function SpecimenTable({ properties }: { properties: Property[] }) {
-  if (properties.length === 0) {
-    return (
-      <div className="py-24 text-center">
-        <p className="font-mono text-xs uppercase tracking-widest opacity-50">
-          No specimens in collection
-        </p>
-        <Link href="/scout" className="btn-editorial mt-8 inline-block">
-          Begin Scouting
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="table-editorial">
-        <thead>
-          <tr>
-            <th>Reference</th>
-            <th>Status</th>
-            <th>Zone</th>
-            <th>Category</th>
-            <th className="text-right">Value (MAD)</th>
-            <th className="text-right">Cashback</th>
-          </tr>
-        </thead>
-        <tbody>
-          {properties.map((property) => {
-            const identifier =
-              property.title_number ||
-              property.requisition_number ||
-              property.melkia_reference ||
-              '—';
-
-            return (
-              <tr key={property.id}>
-                <td>
-                  <Link
-                    href={`/refinery/${property.id}`}
-                    className="font-mono text-sm hover:underline"
-                  >
-                    {identifier}
-                  </Link>
-                </td>
-                <td>
-                  <LegalStampCompact status={property.legal_status} />
-                </td>
-                <td className="font-mono text-sm opacity-70">
-                  {property.cadastral_zone || '—'}
-                </td>
-                <td className="font-mono text-sm">
-                  {property.charter_category || '—'}
-                </td>
-                <td className="text-right font-mono text-sm tabular-nums">
-                  {property.estimated_value_mad
-                    ? formatMAD(property.estimated_value_mad)
-                    : '—'}
-                </td>
-                <td className="text-right font-mono text-sm tabular-nums">
-                  {property.estimated_cashback_pct
-                    ? `${property.estimated_cashback_pct}%`
-                    : '—'}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
   );
 }
 
@@ -365,228 +419,173 @@ function SpecimenTable({ properties }: { properties: Property[] }) {
 // =============================================================================
 
 export default function DashboardPage() {
-  const summary = mockSummary;
-  const properties = mockProperties;
+  const mapRef = useRef<CinematicMapHandle>(null);
+  const [regionFilter, setRegionFilter] = useState<CityClassification | 'all'>('all');
+  const [hoveredPropertyId, setHoveredPropertyId] = useState<string | null>(null);
+
+  // Filter properties by region
+  const filteredProperties = regionFilter === 'all'
+    ? mockProperties
+    : mockProperties.filter((p) => p.city === regionFilter);
+
+  const filteredParcels = regionFilter === 'all'
+    ? mockParcels
+    : mockParcels.filter((p) => {
+        const property = mockProperties.find((prop) => prop.id === p.property_id);
+        return property?.city === regionFilter;
+      });
+
+  // Calculate portfolio stats
+  const portfolioValue = filteredProperties.reduce(
+    (sum, p) => sum + (p.estimated_value_mad || 0),
+    0
+  );
+  const charterPotential = filteredProperties.reduce(
+    (sum, p) => {
+      if (p.acquisition_price_mad && p.estimated_cashback_pct) {
+        return sum + (p.acquisition_price_mad * p.estimated_cashback_pct / 100);
+      }
+      return sum;
+    },
+    0
+  );
+  const totalNetCost = filteredProperties.reduce(
+    (sum, p) => sum + (p.net_acquisition_cost_mad || 0),
+    0
+  );
+
+  // Fly to property on hover
+  const handlePropertyHover = useCallback((property: Property) => {
+    setHoveredPropertyId(property.id);
+    if (property.gps_point && mapRef.current) {
+      mapRef.current.flyToProperty({
+        lng: property.gps_point.coordinates[0],
+        lat: property.gps_point.coordinates[1],
+      }, 15);
+    }
+  }, []);
+
+  const handlePropertyLeave = useCallback(() => {
+    setHoveredPropertyId(null);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-white safe-top safe-bottom">
+    <div className="flex min-h-screen flex-col bg-white">
       {/* Navigation */}
-      <nav className="nav-editorial">
-        <div className="nav-inner">
-          <Link href="/" className="nav-logo">
+      <nav className="sticky top-0 z-50 border-b border-[#EEEEEE] bg-white">
+        <div className="flex items-center justify-between px-6 py-4">
+          <Link href="/" className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em]">
             The Damn Penguin
           </Link>
-          <div className="nav-links">
-            <Link href="/dashboard" className="nav-link nav-link--active">
+          <div className="flex items-center gap-8">
+            <Link href="/dashboard" className="font-mono text-[10px] uppercase tracking-widest">
               Portfolio
             </Link>
-            <Link href="/scout" className="nav-link">
+            <Link href="/scout" className="font-mono text-[10px] uppercase tracking-widest opacity-40 hover:opacity-100">
               Scout
             </Link>
+            <button
+              onClick={async () => {
+                await fetch('/api/auth', { method: 'DELETE' });
+                window.location.href = '/login';
+              }}
+              className="font-mono text-[10px] uppercase tracking-widest opacity-40 hover:opacity-100"
+            >
+              Exit
+            </button>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section — Massive White Space */}
-      <motion.section
-        className="whitespace-authority"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <div className="container-editorial">
-          <motion.div variants={itemVariants}>
-            <h3 className="mb-4">Morocco 2026 Investment Charter</h3>
-          </motion.div>
-          <motion.h1 variants={itemVariants} className="mb-8 max-w-3xl">
-            Digital Investment Gallery
-          </motion.h1>
-          <motion.p
-            variants={itemVariants}
-            className="font-editorial max-w-xl text-lg opacity-70"
-          >
-            Curated property intelligence for institutional investors. Each specimen
-            verified against the Bulletin Officiel and E-Cadastre records.
-          </motion.p>
-        </div>
-      </motion.section>
+      {/* Masthead — Heritage Newspaper Style */}
+      <header className="border-b border-black px-6 py-8">
+        <p className="font-mono text-[10px] uppercase tracking-[0.3em] opacity-40">
+          Morocco 2026 Investment Charter
+        </p>
+        <h1 className="mt-2 font-serif text-4xl font-light tracking-tight">
+          Digital Investment Gallery
+        </h1>
+        <p className="mt-1 font-serif text-lg italic opacity-60">
+          National Property Intelligence Pipeline
+        </p>
+      </header>
 
-      {/* Stats Section */}
-      <motion.section
-        className="section-alabaster"
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-100px' }}
-      >
-        <div className="container-editorial">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-            <motion.div variants={itemVariants}>
-              <StatBlock
-                label="Specimens"
-                value={summary.total_properties}
-                sublabel="In collection"
-              />
-            </motion.div>
-            <motion.div variants={itemVariants}>
-              <StatBlock
-                label="Portfolio Value"
-                value={`${(summary.total_value_mad / 1_000_000).toFixed(1)}M`}
-                sublabel="MAD"
-              />
-            </motion.div>
-            <motion.div variants={itemVariants}>
-              <StatBlock
-                label="Avg. Confidence"
-                value={`${summary.average_legal_confidence}%`}
-                sublabel="Legal verification"
-              />
-            </motion.div>
-            <motion.div variants={itemVariants}>
-              <StatBlock
-                label="Charter Potential"
-                value={`${(summary.total_potential_cashback_mad / 1_000_000).toFixed(1)}M`}
-                sublabel="MAD cashback"
-              />
-            </motion.div>
-          </div>
-        </div>
-      </motion.section>
+      {/* Bank Statement Stats */}
+      <BankStatementHeader
+        portfolioValue={portfolioValue}
+        charterPotential={charterPotential}
+        totalNetCost={totalNetCost}
+      />
 
-      {/* Status Breakdown */}
-      <motion.section
-        className="section-void"
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-100px' }}
-      >
-        <div className="container-editorial">
-          <motion.div variants={itemVariants}>
-            <h3 className="mb-8">By Legal Status</h3>
-          </motion.div>
-          <div className="grid grid-cols-3 gap-px bg-[#EEEEEE]">
-            <motion.div
-              variants={itemVariants}
-              className="bg-white p-8 text-center"
-            >
-              <p className="font-serif text-5xl">{summary.by_legal_status.Titled}</p>
-              <p className="mt-2 font-mono text-xs uppercase tracking-widest opacity-50">
-                Certified
-              </p>
-            </motion.div>
-            <motion.div
-              variants={itemVariants}
-              className="bg-white p-8 text-center"
-            >
-              <p className="font-serif text-5xl">
-                {summary.by_legal_status['In-Process']}
-              </p>
-              <p className="mt-2 font-mono text-xs uppercase tracking-widest opacity-50">
-                Pending
-              </p>
-            </motion.div>
-            <motion.div
-              variants={itemVariants}
-              className="bg-white p-8 text-center"
-            >
-              <p className="font-serif text-5xl">{summary.by_legal_status.Melkia}</p>
-              <p className="mt-2 font-mono text-xs uppercase tracking-widest opacity-50">
-                Unverified
-              </p>
-            </motion.div>
-          </div>
-        </div>
-      </motion.section>
+      {/* Regional Toggle */}
+      <RegionalToggle value={regionFilter} onChange={setRegionFilter} />
 
-      {/* Portfolio Map — Cinematic Globe View */}
-      <motion.section
-        className="section-alabaster"
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-100px' }}
-      >
-        <div className="container-editorial">
-          <motion.div variants={itemVariants} className="mb-8">
-            <h3>Territorial Overview</h3>
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <CinematicMap
-              height="500px"
-              showCrosshair={true}
-              parcels={mockParcels}
-              onParcelClick={(parcel) => {
-                window.location.href = `/refinery/${parcel.property_id}`;
-              }}
-            />
-          </motion.div>
+      {/* Split Screen: Map (Left) + Catalog (Right) */}
+      <div className="flex flex-1">
+        {/* Map — Sticky Left Panel */}
+        <div className="sticky top-[120px] hidden h-[calc(100vh-120px)] w-1/2 border-r border-[#EEEEEE] lg:block">
+          <CinematicMap
+            ref={mapRef}
+            height="100%"
+            showCrosshair={true}
+            parcels={filteredParcels}
+            enableRealtime={false}
+            onParcelClick={(parcel) => {
+              window.location.href = `/refinery/${parcel.property_id}`;
+            }}
+          />
         </div>
-      </motion.section>
 
-      {/* Specimen Grid */}
-      <motion.section
-        className="section-void"
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-100px' }}
-      >
-        <div className="container-editorial">
+        {/* Catalog — Scrolling Right Panel */}
+        <div className="flex-1">
           <motion.div
-            variants={itemVariants}
-            className="mb-8 flex items-end justify-between"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
           >
-            <h3>Specimen Catalog</h3>
-            <Link href="/scout" className="btn-editorial">
-              Add Specimen
-            </Link>
-          </motion.div>
+            {/* Specimen Count */}
+            <div className="border-b border-[#EEEEEE] px-6 py-4">
+              <p className="font-mono text-[10px] uppercase tracking-widest opacity-40">
+                {filteredProperties.length} Specimens
+                {regionFilter !== 'all' && (
+                  <span className="ml-2">
+                    · <em className="font-serif not-italic">{regionFilter}</em>
+                  </span>
+                )}
+              </p>
+            </div>
 
-          {/* Grid View */}
-          <div className="grid gap-px bg-[#EEEEEE] md:grid-cols-2 lg:grid-cols-3">
-            {properties.map((property) => (
-              <motion.div
-                key={property.id}
-                variants={itemVariants}
-                className="bg-white"
-              >
-                <SpecimenCard property={property} />
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Table View */}
-      <motion.section
-        className="section-alabaster"
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-100px' }}
-      >
-        <div className="container-editorial">
-          <motion.div variants={itemVariants}>
-            <h3 className="mb-8">Full Index</h3>
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <SpecimenTable properties={properties} />
+            {/* Specimen List */}
+            {filteredProperties.length === 0 ? (
+              <div className="flex h-64 items-center justify-center">
+                <p className="font-mono text-xs uppercase tracking-widest opacity-30">
+                  No specimens in this region
+                </p>
+              </div>
+            ) : (
+              filteredProperties.map((property) => (
+                <motion.div key={property.id} variants={itemVariants}>
+                  <SpecimenCard
+                    property={property}
+                    onHover={() => handlePropertyHover(property)}
+                    onLeave={handlePropertyLeave}
+                  />
+                </motion.div>
+              ))
+            )}
           </motion.div>
         </div>
-      </motion.section>
+      </div>
 
       {/* Footer */}
-      <footer className="section-void border-t border-[#EEEEEE]">
-        <div className="container-editorial">
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-xs uppercase tracking-widest opacity-50">
-              © 2026 The Damn Penguin
-            </p>
-            <p className="font-mono text-xs uppercase tracking-widest opacity-50">
-              Morocco Investment Charter
-            </p>
-          </div>
+      <footer className="border-t border-black px-6 py-6">
+        <div className="flex items-center justify-between">
+          <p className="font-mono text-[10px] uppercase tracking-widest opacity-40">
+            © 2026 The Damn Penguin
+          </p>
+          <p className="font-mono text-[10px] uppercase tracking-widest opacity-40">
+            Institutional Access Only
+          </p>
         </div>
       </footer>
     </div>

@@ -22,6 +22,32 @@ export type AuditEventType =
 
 export type DocumentVerificationStatus = 'pending' | 'verified' | 'rejected';
 
+// Regional Classifications
+export type InvestmentRegion =
+  | 'Marrakech-Safi'
+  | 'Fes-Meknes'
+  | 'Casablanca-Settat'
+  | 'Rabat-Sale-Kenitra'
+  | 'Tanger-Tetouan'
+  | 'Souss-Massa'
+  | 'Draa-Tafilalet'
+  | 'Other';
+
+export type CityClassification =
+  | 'Marrakech'
+  | 'Essaouira'
+  | 'Fes'
+  | 'Casablanca'
+  | 'Rabat'
+  | 'Tangier'
+  | 'Agadir'
+  | 'Ouarzazate'
+  | 'Meknes'
+  | 'Other';
+
+// Confidence breakdown
+export type VerificationStatus = 'OK' | 'PENDING' | 'FAILED' | 'NOT_APPLICABLE';
+
 // =============================================================================
 // GEOSPATIAL TYPES
 // =============================================================================
@@ -34,6 +60,17 @@ export interface GeoPoint {
 export interface GeoPolygon {
   type: 'Polygon';
   coordinates: Array<Array<[longitude: number, latitude: number]>>;
+}
+
+// =============================================================================
+// CONFIDENCE BREAKDOWN
+// =============================================================================
+
+export interface ConfidenceBreakdown {
+  cadastre: VerificationStatus;
+  heirs: VerificationStatus;
+  encumbrance: VerificationStatus;
+  occupation: VerificationStatus;
 }
 
 // =============================================================================
@@ -71,10 +108,22 @@ export interface Property {
   legal_status: LegalStatus;
   legal_confidence_score: number | null;
 
+  // Confidence Breakdown
+  cadastre_status: VerificationStatus;
+  heirs_status: VerificationStatus;
+  encumbrance_status: VerificationStatus;
+  occupation_status: VerificationStatus;
+
   // Geospatial
   gps_point: GeoPoint | null;
   boundary_polygon: GeoPolygon | null;
   cadastral_zone: string | null;
+
+  // Regional Classification
+  region: InvestmentRegion | null;
+  city: CityClassification | null;
+  neighborhood: string | null;
+  street_address: string | null;
 
   // 2026 Investment Charter
   charter_category: CharterCategory | null;
@@ -87,6 +136,13 @@ export interface Property {
   estimated_value_mad: number | null;
   price_per_sqm_mad: number | null;
   surface_sqm: number | null;
+  net_acquisition_cost_mad: number | null; // After charter cashback
+
+  // Property Details
+  property_type: string | null;
+  construction_year: number | null;
+  rooms: number | null;
+  floors: number | null;
 
   // Audit
   audit_trail: AuditEvent[];
@@ -166,13 +222,31 @@ export interface PortfolioSummary {
   total_value_mad: number;
   by_legal_status: Record<LegalStatus, number>;
   by_charter_category: Record<CharterCategory, number>;
+  by_region: Record<InvestmentRegion, number>;
+  by_city: Record<CityClassification, number>;
   average_legal_confidence: number;
   total_potential_cashback_mad: number;
+  total_net_acquisition_cost_mad: number;
+}
+
+export interface RegionalSummary {
+  region: InvestmentRegion;
+  city: CityClassification;
+  property_count: number;
+  total_value_mad: number;
+  avg_confidence: number;
+  titled_count: number;
+  in_process_count: number;
+  melkia_count: number;
+  total_net_cost_mad: number;
+  total_charter_savings_mad: number;
 }
 
 export interface DashboardFilters {
   legal_status?: LegalStatus[];
   charter_category?: CharterCategory[];
+  region?: InvestmentRegion[];
+  city?: CityClassification[];
   min_confidence?: number;
   search?: string;
 }

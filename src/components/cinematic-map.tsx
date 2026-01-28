@@ -32,8 +32,8 @@ export interface LandParcel {
   property_id: string;
   polygon: GeoPolygon;
   legal_status: 'Titled' | 'In-Process' | 'Melkia';
-  title_number?: string;
-  estimated_value_mad?: number;
+  title_number?: string | undefined;
+  estimated_value_mad?: number | undefined;
 }
 
 export interface CinematicMapHandle {

@@ -1,0 +1,328 @@
+@import 'tailwindcss';
+
+/* =============================================================================
+   CSS CUSTOM PROPERTIES - Institutional Design Tokens
+   ============================================================================= */
+
+:root {
+  /* Typography */
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Spacing - 4px base */
+  --spacing-unit: 4px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+
+  /* Z-index scale */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+  --z-tooltip: 500;
+
+  /* Safe area insets for PWA */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* PWA Safe Areas */
+.safe-top {
+  padding-top: var(--safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.safe-left {
+  padding-left: var(--safe-area-inset-left);
+}
+
+.safe-right {
+  padding-right: var(--safe-area-inset-right);
+}
+
+.safe-all {
+  padding: var(--safe-area-inset-top) var(--safe-area-inset-right)
+    var(--safe-area-inset-bottom) var(--safe-area-inset-left);
+}
+
+/* =============================================================================
+   INSTITUTIONAL DESIGN SYSTEM
+   ============================================================================= */
+
+/* Data Tables */
+.data-table {
+  @apply w-full border-collapse text-sm;
+}
+
+.data-table th {
+  @apply border-b border-slate-200 bg-slate-50 px-4 py-3 text-left
+         font-semibold uppercase tracking-wider text-slate-600;
+  font-size: 0.6875rem;
+}
+
+.data-table td {
+  @apply border-b border-slate-100 px-4 py-3 text-slate-700;
+}
+
+.data-table tr:hover td {
+  @apply bg-slate-50;
+}
+
+/* Monospace Data */
+.mono-data {
+  @apply font-mono text-sm tabular-nums tracking-tight;
+}
+
+/* Status Indicators */
+.status-dot {
+  @apply inline-block h-2 w-2 rounded-full;
+}
+
+.status-dot--active {
+  @apply bg-emerald-500;
+  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Cards */
+.card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+}
+
+.card-header {
+  @apply border-b border-slate-100 px-6 py-4;
+}
+
+.card-body {
+  @apply px-6 py-4;
+}
+
+.card-footer {
+  @apply border-t border-slate-100 px-6 py-4;
+}
+
+/* Buttons */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg
+         font-medium transition-all duration-150
+         focus:outline-none focus:ring-2 focus:ring-offset-2
+         disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-sm;
+}
+
+.btn-md {
+  @apply px-4 py-2 text-sm;
+}
+
+.btn-lg {
+  @apply px-6 py-3 text-base;
+}
+
+.btn-primary {
+  @apply bg-slate-900 text-white hover:bg-slate-800
+         focus:ring-slate-900;
+}
+
+.btn-secondary {
+  @apply border border-slate-300 bg-white text-slate-700
+         hover:bg-slate-50 focus:ring-slate-500;
+}
+
+.btn-danger {
+  @apply bg-rose-600 text-white hover:bg-rose-700
+         focus:ring-rose-600;
+}
+
+/* Form Inputs */
+.input {
+  @apply w-full rounded-lg border border-slate-300 px-4 py-2
+         text-slate-900 placeholder-slate-400
+         transition-colors duration-150
+         focus:border-slate-500 focus:outline-none focus:ring-2
+         focus:ring-slate-500/20;
+}
+
+.input-error {
+  @apply border-rose-500 focus:border-rose-500 focus:ring-rose-500/20;
+}
+
+/* Labels */
+.label {
+  @apply mb-1.5 block text-sm font-medium text-slate-700;
+}
+
+/* =============================================================================
+   LEGAL STATUS COLORS
+   ============================================================================= */
+
+.legal-titled {
+  --legal-bg: theme('colors.emerald.50');
+  --legal-border: theme('colors.emerald.200');
+  --legal-text: theme('colors.emerald.700');
+  --legal-dot: theme('colors.emerald.500');
+}
+
+.legal-in-process {
+  --legal-bg: theme('colors.amber.50');
+  --legal-border: theme('colors.amber.200');
+  --legal-text: theme('colors.amber.700');
+  --legal-dot: theme('colors.amber.500');
+}
+
+.legal-melkia {
+  --legal-bg: theme('colors.rose.50');
+  --legal-border: theme('colors.rose.200');
+  --legal-text: theme('colors.rose.700');
+  --legal-dot: theme('colors.rose.500');
+}
+
+/* =============================================================================
+   CHARTER CATEGORY COLORS
+   ============================================================================= */
+
+.charter-a {
+  --charter-bg: theme('colors.blue.50');
+  --charter-text: theme('colors.blue.700');
+}
+
+.charter-b {
+  --charter-bg: theme('colors.violet.50');
+  --charter-text: theme('colors.violet.700');
+}
+
+.charter-c {
+  --charter-bg: theme('colors.teal.50');
+  --charter-text: theme('colors.teal.700');
+}
+
+/* =============================================================================
+   UTILITY ANIMATIONS
+   ============================================================================= */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in var(--transition-base) ease forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up var(--transition-base) ease forwards;
+}
+
+.animate-slide-down {
+  animation: slide-down var(--transition-base) ease forwards;
+}
+
+/* =============================================================================
+   SCROLLBAR STYLING
+   ============================================================================= */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: theme('colors.slate.300');
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.slate.400');
+}
+
+/* =============================================================================
+   PRINT STYLES
+   ============================================================================= */
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+}

@@ -142,10 +142,17 @@ export function createGeoPoint(lng: number, lat: number): GeoPoint {
 export function createGeoPolygon(
   coordinates: Array<[number, number]>
 ): GeoPolygon {
+  if (coordinates.length === 0) {
+    return {
+      type: 'Polygon',
+      coordinates: [[]],
+    };
+  }
+
   // Ensure ring is closed
   const ring = [...coordinates];
-  const first = ring[0];
-  const last = ring[ring.length - 1];
+  const first = ring[0]!;
+  const last = ring[ring.length - 1]!;
 
   if (first[0] !== last[0] || first[1] !== last[1]) {
     ring.push(first);
@@ -163,7 +170,7 @@ export function createGeoPolygon(
  */
 export function calculatePolygonArea(polygon: GeoPolygon): number {
   const ring = polygon.coordinates[0];
-  if (ring.length < 4) return 0;
+  if (!ring || ring.length < 4) return 0;
 
   // Approximate meters per degree at Morocco's latitude (~32°N)
   const metersPerDegreeLat = 111132;
@@ -171,8 +178,11 @@ export function calculatePolygonArea(polygon: GeoPolygon): number {
 
   let area = 0;
   for (let i = 0; i < ring.length - 1; i++) {
-    const [x1, y1] = ring[i];
-    const [x2, y2] = ring[i + 1];
+    const coord1 = ring[i];
+    const coord2 = ring[i + 1];
+    if (!coord1 || !coord2) continue;
+    const [x1, y1] = coord1;
+    const [x2, y2] = coord2;
 
     // Convert to meters
     const x1m = x1 * metersPerDegreeLng;
@@ -191,13 +201,22 @@ export function calculatePolygonArea(polygon: GeoPolygon): number {
  */
 export function calculateCentroid(polygon: GeoPolygon): GeoPoint {
   const ring = polygon.coordinates[0];
+  if (!ring || ring.length === 0) {
+    return {
+      type: 'Point',
+      coordinates: [0, 0],
+    };
+  }
+
   let sumLng = 0;
   let sumLat = 0;
   const n = ring.length - 1; // Exclude closing point
 
   for (let i = 0; i < n; i++) {
-    sumLng += ring[i][0];
-    sumLat += ring[i][1];
+    const coord = ring[i];
+    if (!coord) continue;
+    sumLng += coord[0];
+    sumLat += coord[1];
   }
 
   return {
@@ -219,7 +238,11 @@ export function calculateBoundingBox(
   let minLat = Infinity;
   let maxLat = -Infinity;
 
-  for (const [lng, lat] of ring) {
+  if (!ring) return { minLng: 0, maxLng: 0, minLat: 0, maxLat: 0 };
+
+  for (const coord of ring) {
+    if (!coord) continue;
+    const [lng, lat] = coord;
     if (lng < minLng) minLng = lng;
     if (lng > maxLng) maxLng = lng;
     if (lat < minLat) minLat = lat;
@@ -256,7 +279,7 @@ export function geoPolygonToPostGIS(polygon: GeoPolygon): string {
  */
 export function postGISPointToGeo(wkt: string): GeoPoint | null {
   const match = wkt.match(/POINT\(([-\d.]+)\s+([-\d.]+)\)/i);
-  if (!match) return null;
+  if (!match || !match[1] || !match[2]) return null;
 
   return {
     type: 'Point',

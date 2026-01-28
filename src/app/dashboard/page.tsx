@@ -262,8 +262,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     : [];
 
   const filters: DashboardFilters = {
-    legal_status: statusFilter.length > 0 ? statusFilter : undefined,
-    search: params.q,
+    ...(statusFilter.length > 0 && { legal_status: statusFilter }),
+    ...(params.q && { search: params.q }),
   };
 
   // Fetch data

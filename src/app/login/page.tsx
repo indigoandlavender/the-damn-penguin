@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 // =============================================================================
-// LOGIN PAGE — Password Gate
+// LOGIN FORM COMPONENT
 // =============================================================================
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
 
@@ -28,7 +28,6 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
-        // Use window.location for redirect to avoid type issues
         window.location.href = redirect;
       } else {
         setError('Invalid access code');
@@ -40,6 +39,54 @@ export default function LoginPage() {
     }
   };
 
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <label
+          htmlFor="password"
+          className="mb-2 block font-mono text-[10px] uppercase tracking-widest opacity-50"
+        >
+          Access Code
+        </label>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••••••"
+          autoComplete="current-password"
+          autoFocus
+          className="w-full border-b border-[#EEEEEE] bg-transparent py-3 font-mono text-sm tracking-wider outline-none transition-colors focus:border-black"
+        />
+      </div>
+
+      {error && (
+        <p className="font-mono text-xs uppercase tracking-wider text-black">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={isLoading || !password}
+        className={`
+          w-full border border-black bg-black py-3 font-mono text-xs
+          uppercase tracking-widest text-white transition-all
+          hover:bg-white hover:text-black
+          disabled:cursor-not-allowed disabled:opacity-30
+        `}
+      >
+        {isLoading ? 'Verifying...' : 'Enter'}
+      </button>
+    </form>
+  );
+}
+
+// =============================================================================
+// LOGIN PAGE — Password Gate
+// =============================================================================
+
+export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white">
       <div className="w-full max-w-sm">
@@ -53,46 +100,15 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-2 block font-mono text-[10px] uppercase tracking-widest opacity-50"
-            >
-              Access Code
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              autoComplete="current-password"
-              autoFocus
-              className="w-full border-b border-[#EEEEEE] bg-transparent py-3 font-mono text-sm tracking-wider outline-none transition-colors focus:border-black"
-            />
+        {/* Form with Suspense */}
+        <Suspense fallback={
+          <div className="space-y-6">
+            <div className="h-12 animate-pulse bg-[#F5F5F5]" />
+            <div className="h-12 animate-pulse bg-[#F5F5F5]" />
           </div>
-
-          {error && (
-            <p className="font-mono text-xs uppercase tracking-wider text-black">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading || !password}
-            className={`
-              w-full border border-black bg-black py-3 font-mono text-xs
-              uppercase tracking-widest text-white transition-all
-              hover:bg-white hover:text-black
-              disabled:cursor-not-allowed disabled:opacity-30
-            `}
-          >
-            {isLoading ? 'Verifying...' : 'Enter'}
-          </button>
-        </form>
+        }>
+          <LoginForm />
+        </Suspense>
 
         {/* Footer */}
         <p className="mt-16 text-center font-mono text-[10px] uppercase tracking-widest opacity-30">

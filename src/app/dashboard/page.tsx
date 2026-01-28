@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { LegalStamp, LegalStampCompact } from '@/components/verification-badge';
+import { CinematicMap, type LandParcel } from '@/components/cinematic-map';
 import type {
   LegalStatus,
   CharterCategory,
@@ -130,6 +131,59 @@ const mockProperties: Property[] = [
     updated_at: '2024-03-05T16:45:00Z',
     created_by: null,
     updated_by: null,
+  },
+];
+
+// Mock parcels for map visualization
+const mockParcels: LandParcel[] = [
+  {
+    id: 'parcel-1',
+    property_id: '1',
+    polygon: {
+      type: 'Polygon',
+      coordinates: [[
+        [-7.9815, 31.6300],
+        [-7.9807, 31.6300],
+        [-7.9807, 31.6290],
+        [-7.9815, 31.6290],
+        [-7.9815, 31.6300],
+      ]],
+    },
+    legal_status: 'Titled',
+    title_number: 'TF-12847/M',
+    estimated_value_mad: 5100000,
+  },
+  {
+    id: 'parcel-2',
+    property_id: '2',
+    polygon: {
+      type: 'Polygon',
+      coordinates: [[
+        [-9.7672, 31.5090],
+        [-9.7664, 31.5090],
+        [-9.7664, 31.5080],
+        [-9.7672, 31.5080],
+        [-9.7672, 31.5090],
+      ]],
+    },
+    legal_status: 'In-Process',
+    estimated_value_mad: 3200000,
+  },
+  {
+    id: 'parcel-3',
+    property_id: '3',
+    polygon: {
+      type: 'Polygon',
+      coordinates: [[
+        [-6.8940, 30.9194],
+        [-6.8932, 30.9194],
+        [-6.8932, 30.9184],
+        [-6.8940, 30.9184],
+        [-6.8940, 30.9194],
+      ]],
+    },
+    legal_status: 'Melkia',
+    estimated_value_mad: 1400000,
   },
 ];
 
@@ -442,6 +496,31 @@ export default function DashboardPage() {
               </p>
             </motion.div>
           </div>
+        </div>
+      </motion.section>
+
+      {/* Portfolio Map — Cinematic Globe View */}
+      <motion.section
+        className="section-alabaster"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-100px' }}
+      >
+        <div className="container-editorial">
+          <motion.div variants={itemVariants} className="mb-8">
+            <h3>Territorial Overview</h3>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <CinematicMap
+              height="500px"
+              showCrosshair={true}
+              parcels={mockParcels}
+              onParcelClick={(parcel) => {
+                window.location.href = `/refinery/${parcel.property_id}`;
+              }}
+            />
+          </motion.div>
         </div>
       </motion.section>
 

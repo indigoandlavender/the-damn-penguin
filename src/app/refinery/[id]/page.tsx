@@ -7,6 +7,7 @@ import {
   VerificationBlock,
   ConfidenceMeter,
 } from '@/components/verification-badge';
+import { StaticPropertyMap } from '@/components/cinematic-map';
 import type { Property, AuditEvent, PropertyDocument } from '@/types';
 
 // =============================================================================
@@ -168,32 +169,34 @@ function formatDate(dateString: string): string {
 // COMPONENTS
 // =============================================================================
 
-function MapVoid({ gpsPoint }: { gpsPoint: Property['gps_point'] }) {
-  const lat = gpsPoint?.coordinates[1].toFixed(6) || '—';
-  const lng = gpsPoint?.coordinates[0].toFixed(6) || '—';
+function PropertyMap({ property }: { property: Property }) {
+  const hasLocation = property.gps_point !== null;
+  
+  if (!hasLocation) {
+    return (
+      <div className="relative aspect-video border border-black bg-[#F9F9F9]">
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="font-mono text-xs uppercase tracking-widest opacity-30">
+            NO GPS DATA
+          </span>
+          <span className="mt-2 font-mono text-xs opacity-50">
+            Acquire coordinates via Field Scout
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="map-void map-crosshair relative">
-      {/* Crosshair Overlay */}
-      <div className="crosshair-overlay" />
-
-      {/* Placeholder Content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-mono text-xs tracking-widest opacity-30">
-          TARGETING SYSTEM
-        </span>
-        <span className="mt-2 font-mono text-sm tabular-nums">
-          {lat}°N, {Math.abs(parseFloat(lng)).toFixed(6)}°W
-        </span>
-      </div>
-
-      {/* Coordinates Overlay */}
-      <div className="absolute bottom-4 left-4 font-mono text-xs tracking-wider opacity-50">
-        <span>LAT {lat}</span>
-        <span className="mx-3">|</span>
-        <span>LNG {lng}</span>
-      </div>
-    </div>
+    <StaticPropertyMap
+      center={{
+        lng: property.gps_point!.coordinates[0],
+        lat: property.gps_point!.coordinates[1],
+      }}
+      marker={property.gps_point}
+      polygon={property.boundary_polygon}
+      height="400px"
+    />
   );
 }
 
@@ -497,7 +500,7 @@ export default function RefineryPage() {
         </div>
       </motion.header>
 
-      {/* Map Section — Floating Void */}
+      {/* Map Section — Cinematic 3D Terrain */}
       <motion.section
         className="section-void"
         variants={containerVariants}
@@ -507,7 +510,7 @@ export default function RefineryPage() {
       >
         <div className="container-editorial">
           <motion.div variants={itemVariants}>
-            <MapVoid gpsPoint={property.gps_point} />
+            <PropertyMap property={property} />
           </motion.div>
         </div>
       </motion.section>

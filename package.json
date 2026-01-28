@@ -19,9 +19,11 @@
     "@supabase/supabase-js": "^2.47.10",
     "@tailwindcss/postcss": "^4.1.18",
     "framer-motion": "^11.15.0",
+    "mapbox-gl": "^3.9.0",
     "next": "15.3.6",
     "react": "^19.0.1",
-    "react-dom": "^19.0.1"
+    "react-dom": "^19.0.1",
+    "react-map-gl": "^7.1.8"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
